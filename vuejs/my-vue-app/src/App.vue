@@ -1,27 +1,20 @@
 <template>
   <div>
-    <h1>{{ message }}</h1>
-    <button @click="changeMessage">메시지 변경</button>
+    <h1>Vue Router 테스트</h1>
+    <nav>
+      <router-link to="/">홈</router-link> |
+      <router-link to="/about">소개</router-link>
+    </nav>
+    <router-view />
   </div>
 </template>
 
 <script>
-export default {
-  data() {
-    return {
-      message: "안녕하세요, Vue.js!"
-    };
-  },
-  methods: {
-    changeMessage() {
-      this.message = "메시지가 변경되었습니다!";
-    }
-  }
-};
+export default {};
 </script>
 
 <style>
-h1 {
-  color: blue;
+nav {
+  margin-bottom: 20px;
 }
 </style>
