@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>Todo List</title>
+</head>
+<body>
+    <h2>Todo List</h2>
+    <!-- 사용자가 할 일을 입력하는 입력창 -->
+    <input type="text" id="todo-input">
+    <!-- 추가 버튼 (클릭하면 addTodo() 실행) -->
+    <button onclick="addTodo()">추가</button>
+    
+    <!-- 할 일 목록을 표시할 공간 -->
+    <ul id="todo-list"></ul>
+
+    <script>
+        // 할 일 목록을 저장할 배열
+        let todos = [];
+
+        // 새로운 할 일을 추가하는 함수
+        function addTodo(){
+            
+            // 입력창 가져오기
+            let input = document.getElementById("todo-input");
+
+            // 입력된 텍스트에서 앞뒤 공백 제거
+            let todoText = input.value.trim();
+            
+            // 입력값이 비어 있으면 추가하지 않음
+            if (todoText === "") return;
+
+            // 배열에 새로운 할 일 추가
+            todos.push(todoText);
+
+            // 입력창 비우기
+            input.value = "";
+
+            // 목록을 다시 그려서 화면 업데이트
+            updateList();
+
+        }
+
+        
+
+
+        // 화면에 할 일 목록을 업데이트하는 함수
+        function updateList() {
+            // <ul> 요소 가져오기
+            let list = document.getElementById("todo-list");
+
+            // 기존 목록을 비우고 다시 그림
+            list.innerHTML = "";
+
+            // todos 배열을 반복하면서 각 요소를 화면에 표시
+            todos.forEach((todo, index) => {
+
+                // 새로운 <li> 요소 생성
+                let li = document.createElement("li");
+
+                // <li> 안에 할 일 내용 넣기
+                li.textContent = todo;
+
+                // 삭제 버튼 생성
+                let button = document.createElement("button");
+
+                // 버튼 안에 "삭제"라는 글자 넣기
+                button.textContent = "삭제";
+
+                // 클릭하면 해당 할 일 삭제
+                button.onclick = () => removeTodo(index);
+                
+                // <li> 안에 삭제 버튼 추가
+                li.appendChild(button);
+
+                // <ul> 안에 <li> 추가 (화면에 표시됨)
+                list.appendChild(li);
+
+                })
+        }
+
+
+        // 할 일을 삭제하는 함수
+        function removeTodo(index){
+            // 배열에서 해당 인덱스의 요소 삭제
+            todos.splice(index, 1);
+
+            // 화면 업데이트 (삭제된 항목 반영)
+            updateList();
+
+        }
+
+    </script>
+</body>
+</html>
