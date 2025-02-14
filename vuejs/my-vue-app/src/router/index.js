@@ -1,15 +1,15 @@
 import { createRouter, createWebHistory } from "vue-router"; // Vue Router 기능 가져오기
-import HomePage from "../components/HomePage.vue"; // 홈 페이지 컴포넌트 가져오기
 import AboutPage from "../components/AboutPage.vue"; // 소개 페이지 컴포넌트 가져오기
 import UserProfilePage from "@/components/UserProfilePage.vue";
 import DashboardPage from "@/views/DashboardPage.vue";
 import { useAuthStore } from "@/stores/authStore";
+import HomePage from "../views/HomePage.vue"
 
 const routes = [
   { path: "/", component: HomePage }, // "/" 경로로 이동하면 HomePage.vue 표시
   { path: "/about", component: AboutPage }, // "/about" 경로로 이동하면 AboutPage.vue 표시
   { path: "/user/:id", component: UserProfilePage},
-  { path: "/dashboard", component: DashboardPage, meta: {requiresAuth: true} }
+  { path: "/dashboard", component: DashboardPage}
 ];
 
 const router = createRouter({

@@ -1,7 +1,13 @@
 <template>
     <div>
-        <h2>대시보드</h2>
-        <p>이 페이지는 로그인한 사용자만 볼 수 있습니다.</p>
+        <h1>대시보드 페이지</h1>
+        <p>여기는 대시보드입니다.</p>
+        <router-link to="/"><button>홈으로 이동</button></router-link>
     </div>
 </template>
 
+<script>
+export default {
+    name: "DashboardPage"
+};
+</script>
