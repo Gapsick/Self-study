@@ -1,20 +1,40 @@
 <template>
   <div>
-    <h1>Vue Router 테스트</h1>
-    <nav>
-      <router-link to="/">홈</router-link> |
-      <router-link to="/about">소개</router-link>
-    </nav>
-    <router-view />
+    <h2>To-Do List 만들기</h2>
+    <input v-model="newTask" placeholder="할 일을 입력하세요" />
+    <button @click="addTask">추가</button>
+
+    <ul>
+      <li v-for="(task, index) in tasks" :key="index">
+        {{ task }}
+        <button @click="deleteTask">삭제</button>
+      </li>
+    </ul>
+
   </div>
 </template>
 
 <script>
-export default {};
-</script>
+export default {
+  data() {
+    return {
+      newTask: "",
+      tasks: []
+    }
+  },
+  methods: {
+    addTask() {
+      if (this.newTask.trim() !== "" ) {
+        this.tasks.push(this.newTask);
+        this.newTask ="";
+      }
+    },
+    deleteTask(index) {
+      this.tasks.splice(index, 1);
+    }
 
-<style>
-nav {
-  margin-bottom: 20px;
+  }
 }
-</style>
+
+
+</script>
