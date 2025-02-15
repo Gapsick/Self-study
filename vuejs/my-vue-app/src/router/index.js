@@ -1,30 +1,21 @@
-import { createRouter, createWebHistory } from "vue-router"; // Vue Router 기능 가져오기
-import AboutPage from "../components/AboutPage.vue"; // 소개 페이지 컴포넌트 가져오기
-import UserProfilePage from "@/components/UserProfilePage.vue";
-import DashboardPage from "@/views/DashboardPage.vue";
-import { useAuthStore } from "@/stores/authStore";
-import HomePage from "../views/HomePage.vue"
+import { createRouter, createWebHistory } from "vue-router";
+import MainPage from "../views/MainPage.vue";
+import NoticeBoard from "../views/NoticeBoard.vue";
+import QnABoard from "../views/QnABoard.vue";
+import NoticeForm from "@/views/NoticeForm.vue";
+import NoticeDetail from "@/views/NoticeDetail.vue";
 
 const routes = [
-  { path: "/", component: HomePage }, // "/" 경로로 이동하면 HomePage.vue 표시
-  { path: "/about", component: AboutPage }, // "/about" 경로로 이동하면 AboutPage.vue 표시
-  { path: "/user/:id", component: UserProfilePage},
-  { path: "/dashboard", component: DashboardPage}
+  { path: "/", component: MainPage },  // 메인 페이지
+  { path: "/notice", component: NoticeBoard },  // 공지사항 페이지
+  { path: "/qna", component: QnABoard },  // Q&A 게시판 페이지
+  { path: "/notice-form", component: NoticeForm },  // 작성 페이지
+  { path: "/notice/:id", component: NoticeDetail }
 ];
 
 const router = createRouter({
-  history: createWebHistory(), // 브라우저에서 뒤로 가기/앞으로 가기 지원
-  routes // 위에서 설정한 routes 배열 적용
+  history: createWebHistory(),
+  routes
 });
 
-router.beforeEach((to, from, next) => {
-  const authStore = useAuthStore();
-
-  if (to.meta.requiresAuth && !authStore.isAuthenticated) {
-    next("/");
-  } else {
-    next();
-  }
-})
-
-export default router; // 다른 파일에서 router를 사용할 수 있도록 내보내기
+export default router;
