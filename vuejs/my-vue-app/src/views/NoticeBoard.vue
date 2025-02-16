@@ -1,37 +1,20 @@
 <template>
     <div>
-        <h1>공지사항</h1>
-        <ul>
-            <li v-for="notice in noticeStore.notices" :key="notice.id">
-                <router-link :to="`/notice/${notice.id}`">
-                    {{ notice.title }}
-                </router-link>
-            </li>
-        </ul>
-        <button @click="$router.push('/notice-form')">작성하기</button>
+      <h1>공지사항</h1>
+      <button @click="$router.push('/notice-form')">새 공지 작성</button>
+  
+      <ul>
+        <li v-for="notice in notices" :key="notice.id">
+          <router-link :to="'/notice/' + notice.id">{{ notice.title }} ({{ notice.date }})</router-link>
+        </li>
+      </ul>
     </div>
-</template>
-
-<script>
-import { useNoticeStore } from '@/stores/noticeStore';
-
-export default {
-    name: "NoticeBoard",
-
-    setup() {
-        const noticeStore = useNoticeStore();   // Pinia Store 가져오기
-        return { noticeStore };
-    }
-
-}
-</script>
-
-<style scoped>
-button {
-  background-color: blue;
-  color: white;
-  padding: 10px;
-  cursor: pointer;
-  margin-bottom: 15px;
-}
-</style>
+  </template>
+  
+  <script setup>
+  import { useNoticeStore } from "@/store/noticeStore";
+  
+  const noticeStore = useNoticeStore();
+  const notices = noticeStore.notices;
+  </script>
+  

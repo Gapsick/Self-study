@@ -7,7 +7,7 @@
 </template>
 
 <script>
-import { useAuthStore } from "../stores/authStore";
+import { useAuthStore } from "../store/authStore";
 
 export default {
     setup() {
