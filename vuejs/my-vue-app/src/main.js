@@ -1,9 +1,17 @@
-import { createApp } from "vue";
-import App from "./App.vue";
-import router from "./router"; // ✅ Vue Router 가져오기
-import { createPinia } from "pinia";    // Pinia 가져오기
+import { createApp } from 'vue';
+import App from './App.vue';
+import GAuth from 'vue3-google-oauth2';
 
 const app = createApp(App);
-app.use(router); // ✅ Vue Router 적용
-app.use(createPinia()); // Vue 앱에서 Pinia 사용 설정
-app.mount("#app");
+
+const gAuthOptions = {
+  clientId: 'YOUR_GOOGLE_CLIENT_ID',
+  scope: 'email',
+  prompt: 'consent',
+  fetch_basic_profile: false
+};
+
+// ✅ gAuthPlugin을 사용하도록 설정
+app.use(GAuth, gAuthOptions);
+
+app.mount('#app');

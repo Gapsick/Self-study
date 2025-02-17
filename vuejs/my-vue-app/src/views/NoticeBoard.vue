@@ -12,7 +12,7 @@
   </template>
   
   <script setup>
-  import { useNoticeStore } from "@/store/noticeStore";
+  import { useNoticeStore } from "@/store/boardStore";
   
   const noticeStore = useNoticeStore();
   const notices = noticeStore.notices;

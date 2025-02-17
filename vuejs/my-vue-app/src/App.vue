@@ -1,27 +1,41 @@
 <template>
   <div>
-    <h1>📌 학과 웹 프로젝트</h1>
-    
-    <nav>
-      <router-link to="/">홈</router-link> |
-      <router-link to="/notice">공지사항</router-link>
-    </nav>
-
-    <router-view />  <!-- ✅ 현재 선택된 페이지를 표시 -->
+    <button @click="loginWithGoogle">Google 로그인</button>
+    <button @click="logout">로그아웃</button>
+    <p v-if="user">환영합니다, {{ user.name }}!</p>
   </div>
 </template>
 
-<script setup>
-</script>
+<script>
+export default {
+  data() {
+    return {
+      user: null
+    };
+  },
+  mounted() {
+    this.checkToken();
+  },
+  methods: {
+    loginWithGoogle() {
+      window.location.href = 'http://localhost:3000/auth/google';
+    },
+    checkToken() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const token = urlParams.get('token');
 
-<style>
-nav {
-  margin-bottom: 20px;
-}
-nav a {
-  margin-right: 10px;
-  text-decoration: none;
-  font-weight: bold;
-  color: #42b983;
-}
-</style>
+      if (token) {
+        localStorage.setItem('jwt', token);
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        this.user = payload;
+        window.history.replaceState({}, document.title, "/");
+      }
+    },
+    logout() {
+      localStorage.removeItem('jwt');
+      this.user = null;
+      window.location.reload();
+    }
+  }
+};
+</script>

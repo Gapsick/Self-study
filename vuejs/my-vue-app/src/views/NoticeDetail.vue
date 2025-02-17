@@ -9,7 +9,7 @@
 
 <script setup>
 import { useRoute } from "vue-router";
-import { useNoticeStore } from "@/store/noticeStore";
+import { useNoticeStore } from "@/store/boardStore";
 
 const route = useRoute();
 const noticeStore = useNoticeStore();
