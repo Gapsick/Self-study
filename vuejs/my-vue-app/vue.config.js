@@ -1,11 +1,11 @@
-const { defineConfig } = require('@vue/cli-service');
-
-module.exports = defineConfig({
-  transpileDependencies: true,
+module.exports = {
   devServer: {
-    headers: {
-      "content_security_policy": "script-src 'self' https://accounts.google.com https://www.gstatic.com https://apis.google.com 'unsafe-inline' 'unsafe-eval'; object-src 'self'"
-
+    port: 8080, // 프론트엔드 포트
+    proxy: {
+      '/auth': {
+        target: 'http://localhost:3000', // 백엔드 주소
+        changeOrigin: true
+      }
     }
   }
-});
+};

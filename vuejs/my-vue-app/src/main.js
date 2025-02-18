@@ -1,17 +1,11 @@
 import { createApp } from 'vue';
 import App from './App.vue';
-import GAuth from 'vue3-google-oauth2';
+import vue3GoogleLogin from 'vue3-google-login';
 
 const app = createApp(App);
 
-const gAuthOptions = {
-  clientId: 'YOUR_GOOGLE_CLIENT_ID',
-  scope: 'email',
-  prompt: 'consent',
-  fetch_basic_profile: false
-};
-
-// ✅ gAuthPlugin을 사용하도록 설정
-app.use(GAuth, gAuthOptions);
+app.use(vue3GoogleLogin, {
+  clientId: '1087749499426-3arq3def468ovjr4i40ckne5mi6bvfrg.apps.googleusercontent.com'
+});
 
 app.mount('#app');

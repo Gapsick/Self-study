@@ -1,59 +1,51 @@
 const express = require('express');
-const session = require('express-session');
-const passport = require('passport');
-const GoogleStrategy = require('passport-google-oauth20').Strategy;
+const cors = require('cors');
 const jwt = require('jsonwebtoken');
-const cors = require('cors');  // CORS 모듈 추가
+
+const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args)); // 🚀 `fetch` 추가
 
 const app = express();
-
-// CORS 설정: 프론트엔드 포트인 8080을 허용
+app.use(express.json());
 app.use(cors({
-  origin: 'http://localhost:8080',  // Vue.js 앱이 실행되는 포트
-  methods: ['GET', 'POST'],  // 사용할 HTTP 메소드
-  credentials: true  // 쿠키를 전달할 경우 필요
+  origin: ['http://localhost:8080'],
+  credentials: true
 }));
 
-// 세션 설정
-app.use(session({
-  secret: process.env.SESSION_SECRET,
-  resave: false,
-  saveUninitialized: true
-}));
+const JWT_SECRET = 'my_secret_key';
 
-// Passport 초기화
-app.use(passport.initialize());
-app.use(passport.session());
+// Google 로그인 API
+app.post('/auth/google', async (req, res) => {
+  try {
+    const { token } = req.body;
 
-// Passport Google OAuth 설정
-passport.use(new GoogleStrategy({
-  clientID: process.env.GOOGLE_CLIENT_ID,
-  clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-  callbackURL: "/auth/google/callback"
-}, (accessToken, refreshToken, profile, done) => {
-  return done(null, profile);
-}));
+    // Google API를 사용하여 토큰 검증
+    const response = await fetch(`https://www.googleapis.com/oauth2/v3/tokeninfo?id_token=${token}`);
+    const data = await response.json();
 
-passport.serializeUser((user, done) => {
-  done(null, user);
-});
-passport.deserializeUser((obj, done) => {
-  done(null, obj);
-});
+    console.log('Google API 응답:', data); // 디버깅용 로그 추가
 
-// Google 로그인 라우트
-app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
+    if (data.error) {
+      return res.status(401).json({ message: '유효하지 않은 토큰', error: data });
+    }
 
-// Google 로그인 후 콜백
-app.get('/auth/google/callback',
-  passport.authenticate('google', { failureRedirect: '/' }),
-  (req, res) => {
-    const token = jwt.sign({ id: req.user.id, name: req.user.displayName, email: req.user.emails[0].value }, process.env.JWT_SECRET, { expiresIn: '1h' });
-    res.redirect(`http://localhost:8080?token=${token}`);
+    // 사용자 정보 저장
+    const user = {
+      id: data.sub,
+      email: data.email,
+      name: data.name,
+      picture: data.picture
+    };
+
+    // 자체 JWT 토큰 발급
+    const customToken = jwt.sign(user, JWT_SECRET, { expiresIn: '1h' });
+
+    res.json({ success: true, token: customToken, user });
+
+  } catch (error) {
+    console.error('Google 로그인 오류:', error);
+    res.status(500).json({ message: '서버 오류', error: error.toString() });
   }
-);
-
-// 포트 설정
-app.listen(3000, () => {
-  console.log("✅ Server running on http://localhost:3000");
 });
+
+// 서버 실행
+app.listen(3000, () => console.log('서버 실행 중: http://localhost:3000'));

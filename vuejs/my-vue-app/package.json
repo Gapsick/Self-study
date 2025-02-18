@@ -13,6 +13,7 @@
     "pinia": "^3.0.1",
     "vue": "^3.2.13",
     "vue-router": "^4.5.0",
+    "vue3-google-login": "^2.0.33",
     "vue3-google-oauth2": "^1.0.7"
   },
   "devDependencies": {
