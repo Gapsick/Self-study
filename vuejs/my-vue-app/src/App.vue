@@ -7,11 +7,11 @@ function handleSuccess(response) {
   console.log('Google 로그인 성공:', response);
 
   axios.post('http://localhost:3000/auth/google', {
-    token: response.credential
+    token: response.credential  // Google ID Token을 서버로 전송
   })
   .then(res => {
     console.log('서버 응답:', res.data);
-    jwtToken = res.data.token; // ✅ JWT 저장
+    jwtToken = res.data.token; // ✅ 서버에서 받은 JWT 저장
     localStorage.setItem('jwt', jwtToken); // ✅ JWT를 localStorage에 저장
   })
   .catch(err => {
