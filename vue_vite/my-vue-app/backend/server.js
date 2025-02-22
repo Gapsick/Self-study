@@ -7,7 +7,12 @@ const cookieParser = require("cookie-parser");
 
 const app = express();
 
-app.use(cors({ credentials: true, origin: "http://localhost:5173" }));
+app.use(cors({
+    origin: "http://localhost:5173",
+    credentials: true,
+    methods: ["GET", "POST"],
+    allowedHeaders: ["Content-Type", "Authorization"]
+}));
 app.use(express.json());
 app.use(cookieParser());
 
@@ -26,6 +31,23 @@ if (!JWT_SECRET || JWT_SECRET === "default_jwt_secret") {
     console.warn("⚠️ [WARNING] JWT_SECRET이 안전하지 않습니다. .env 파일에서 변경하세요.");
 }
 
+// ✅ 로그인 유지 API (자동 로그인 확인) → 가장 위에 배치하는 것이 직관적
+app.get("/api/auth/me", (req, res) => {
+    try {
+        const token = req.headers.authorization?.split(" ")[1]; // "Bearer <token>"에서 토큰 추출
+        if (!token) return res.status(401).json({ message: "토큰 없음" });
+
+        const decoded = jwt.verify(token, JWT_SECRET);
+        if (!decoded.is_verified) {
+            return res.status(403).json({ message: "관리자 승인이 필요합니다." });
+        }
+
+        res.json({ message: "✅ 승인된 사용자", userInfo: decoded });
+    } catch (error) {
+        res.status(401).json({ message: "유효하지 않은 토큰" });
+    }
+});
+
 // ✅ Google OAuth 로그인 처리
 app.post("/api/auth/google", async (req, res) => {
     const { code } = req.body;
@@ -42,14 +64,20 @@ app.post("/api/auth/google", async (req, res) => {
         const tokenResponse = await axios.post("https://oauth2.googleapis.com/token", {
             client_id: GOOGLE_CLIENT_ID,
             client_secret: GOOGLE_CLIENT_SECRET,
-            redirect_uri: "http://localhost:5173/auth/callback",
+            redirect_uri: "http://localhost:5173/",
             grant_type: "authorization_code",
             code
         });
 
+        console.log("✅ Google OAuth Response:", tokenResponse.data); // ✅ 응답 전체 확인
+
         const { access_token, id_token } = tokenResponse.data;
-        console.log("✅ Access Token:", access_token);
-        console.log("✅ ID Token:", id_token);
+
+        if (!access_token) {
+            console.error("❌ [ERROR] access_token이 존재하지 않습니다!");
+        } else {
+            console.log("✅ Access Token:", access_token);
+        }
 
         // 2️⃣ Google API에서 사용자 정보 가져오기
         const userInfoResponse = await axios.get("https://www.googleapis.com/oauth2/v2/userinfo", {
@@ -64,24 +92,27 @@ app.post("/api/auth/google", async (req, res) => {
         const isVerified = true; // 관리자가 승인했다고 가정
 
         // 3️⃣ JWT 토큰 발급 (자동 로그인 유지)
+        // ✅ Google Access Token을 JWT에 포함
         const jwtToken = jwt.sign(
             {
-                sub: userInfo.id,  // Google 사용자 ID (기존 id에서 변경)
-                email: userInfo.email,  // 사용자의 이메일
-                name: userInfo.name,  // 사용자의 이름
-                role: "student",  // 예제: 기본 역할을 학생(student)으로 설정
-                is_verified: true,  // 예제: 관리자가 승인한 사용자 여부
-                iat: Math.floor(Date.now() / 1000),  // 발급 시간 (초 단위)
-                exp: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60) // 7일 후 만료
+                sub: userInfo.id,  
+                email: userInfo.email,  
+                name: userInfo.name,  
+                role: "student",  
+                is_verified: true,  
+                googleAccessToken: access_token,  // ✅ Google Access Token 추가
+                iat: Math.floor(Date.now() / 1000),  
+                exp: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60)  
             },
             JWT_SECRET
         );
-        
+
         console.log("🔹 JWT Token Issued:", jwtToken);
 
         // 4️⃣ 클라이언트에게 JWT 토큰과 사용자 정보 반환
         res.json({
             message: "로그인 성공!",
+            access_token,
             jwtToken,
             userInfo: {
                 id: userInfo.id,
@@ -89,6 +120,19 @@ app.post("/api/auth/google", async (req, res) => {
                 name: userInfo.name,
                 role: userRole,
                 is_verified: isVerified
+            }
+        });
+
+        console.log("🔹 클라이언트로 전송되는 응답 데이터:", {
+            message: "로그인 성공!",
+            access_token,
+            jwtToken,
+            userInfo: {
+                id: userInfo.id,
+                email: userInfo.email,
+                name: userInfo.name,
+                role: "student",
+                is_verified: true
             }
         });
 

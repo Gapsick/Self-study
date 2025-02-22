@@ -1,5 +1,4 @@
 import { fileURLToPath, URL } from 'node:url'
-
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vueDevTools from 'vite-plugin-vue-devtools'
@@ -15,4 +14,13 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url))
     },
   },
+  server: {
+    proxy: {
+      "/api": { // ✅ '/api'로 시작하는 요청을 자동으로 백엔드(`http://localhost:5000`)로 전달
+        target: "http://localhost:5000",
+        changeOrigin: true,
+        secure: false
+      }
+    }
+  }
 })
