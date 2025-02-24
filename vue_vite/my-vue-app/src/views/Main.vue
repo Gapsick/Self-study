@@ -29,7 +29,11 @@
       </label>
       <br>
       <button @click="addEventToGoogleCalendar">📅 Vue에서 일정 추가</button>
-
+      
+      <br><br>
+      <button @click="$router.push('/schedule')">📅 일정 페이지로 이동</button>
+      
+      <br><br>
       <button @click="logout">로그아웃</button>
     </div>
 </template>
