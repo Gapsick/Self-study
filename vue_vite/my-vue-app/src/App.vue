@@ -1,97 +1,50 @@
 <template>
-  <div>
-    <template v-if="isAuthenticated">
-      <nav>
-        <router-link to="/main">🏠 메인</router-link> |
-        <router-link to="/schedule">📅 일정</router-link> |
-        <button @click="logout">🚪 로그아웃</button>
-      </nav>
-    </template>
-
+  <div id="app">
     <router-view />
   </div>
 </template>
 
-<script>
+<script setup>
+import { onMounted, ref } from "vue";
 import axios from "axios";
+import { useRouter } from "vue-router";
 
-export default {
-  name: "App",
-  data() {
-    return {
-      user: null,  // 사용자 정보 저장
-      isAuthenticated: false,  // 로그인 상태
-    };
-  },
-  methods: {
-    async checkLoginStatus() {
-      const token = localStorage.getItem("jwtToken");
+const router = useRouter();
+const user = ref(null);
 
-      if (!token) {
-        console.log("❌ JWT 토큰 없음, 로그인 필요");
-        this.isAuthenticated = false;
-        return;
-      }
+onMounted(async () => {
+    const token = localStorage.getItem("token");
 
-      console.log("🔹 JWT 토큰 확인됨:", token);
+    if (!token) {
+      router.push("/login");
+      return
+    }
 
-      try {
+
+    try {
+        // ✅ Access Token을 `HttpOnly Cookie`에서 자동으로 가져와 인증 요청
         const response = await axios.get("http://localhost:5000/api/auth/me", {
-          headers: { Authorization: `Bearer ${token}` }
+            withCredentials: true // ✅ 쿠키를 포함한 요청
         });
 
-        console.log("✅ 자동 로그인 성공:", response.data);
-        
-        this.user = response.data.userInfo;
-        localStorage.setItem("userInfo", JSON.stringify(this.user));
-        this.isAuthenticated = true;
+        user.value = response.data.userInfo;
+        router.push("/main"); // ✅ 로그인 상태면 메인 페이지로 이동
+    } catch (error) {
+        try {
+            // ✅ Access Token이 만료되었을 경우, 자동으로 Refresh Token을 사용해 갱신 요청
+            await axios.post("http://localhost:5000/api/auth/refresh", {}, { withCredentials: true });
 
-        // ✅ 현재 페이지가 `/main`이 아니라면 `/main`으로 이동
-        if (this.$route.path === "/") {
-          console.log("🔹 `/main` 페이지로 이동 중...");
-          this.$router.push("/main");
-        } else {
-          console.log(`✅ 현재 위치: ${this.$route.path}`);
+            // ✅ 다시 로그인 요청 (Access Token이 갱신되었으므로 재시도)
+            const response = await axios.get("http://localhost:5000/api/auth/me", {
+                withCredentials: true
+            });
+
+            user.value = response.data.userInfo;
+            router.push("/main");
+        } catch (refreshError) {
+            router.push("/login"); // ✅ 인증 실패 시 로그인 페이지로 이동
         }
-
-      } catch (error) {
-        console.error("❌ 자동 로그인 실패:", error.response?.data || error.message);
-        this.logout();
-      }
-    },
-    logout() {
-      localStorage.removeItem("jwtToken");
-      localStorage.removeItem("userInfo");
-      localStorage.removeItem("googleAccessToken");
-      this.isAuthenticated = false;
-      this.$router.push("/");
     }
-  },
-  created() {
-    this.checkLoginStatus(); // ✅ 페이지 로드 시 자동 로그인 확인
-  }
-};
+});
+
 </script>
-
-<style>
-nav {
-  text-align: center;
-  padding: 10px;
-  font-size: 18px;
-}
-
-nav a {
-  margin: 0 10px;
-  text-decoration: none;
-  color: #007bff;
-}
-
-button {
-  margin-left: 10px;
-  padding: 5px 10px;
-  border: none;
-  background: red;
-  color: white;
-  cursor: pointer;
-}
-</style>
