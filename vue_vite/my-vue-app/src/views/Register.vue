@@ -1,6 +1,6 @@
 <template>
   <div class="register-container">
-    <h2>회원가입</h2>
+    <h2>회원가입 신청</h2>
     <form @submit.prevent="submitRegister">
       <label>이름</label>
       <input v-model="name" type="text" required />
@@ -27,7 +27,7 @@
       <label>이메일</label>
       <input v-model="email" type="email" disabled />
 
-      <button type="submit">회원가입 완료</button>
+      <button type="submit">회원가입 신청</button>
     </form>
 
     <p v-if="errorMessage" class="error-message">{{ errorMessage }}</p>
@@ -69,12 +69,12 @@ export default {
         });
 
         if (response.data.success) {
-          alert("회원가입 신청 완료! 관리자의 승인을 기다려주세요.");
+          alert("✅ 회원가입 신청 완료! 관리자의 승인을 기다려주세요.");
           localStorage.removeItem("register_email");
-          this.router.push("/login");
+          this.router.push("/login"); // 로그인 페이지로 이동
         }
       } catch (error) {
-        this.errorMessage = error.response?.data?.message || "회원가입 실패!";
+        this.errorMessage = error.response?.data?.message || "❌ 회원가입 신청 실패!";
       }
     }
   }

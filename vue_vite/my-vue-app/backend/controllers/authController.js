@@ -1,124 +1,127 @@
 const axios = require("axios");
 const jwt = require("jsonwebtoken");
 const db = require("../config/db");
-const { GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, JWT_SECRET, REDIRECT_URI } = require("../config/authConfig");
+require("dotenv").config();
 
-// ✅ Google 로그인 URL 제공 (프론트에서 요청)
+const { GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, REDIRECT_URI, JWT_SECRET } = process.env;
+
+/**
+ * 🔹 1️⃣ Google 로그인 URL 요청
+ */
 const getGoogleAuthUrl = (req, res) => {
-    console.log("🔹 사용 중인 REDIRECT_URI:", REDIRECT_URI);
-
-    const authUrl = `https://accounts.google.com/o/oauth2/auth`
-        + `?client_id=${GOOGLE_CLIENT_ID}`
-        + `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}`
-        + `&scope=${encodeURIComponent("openid email profile")}`
-        + `&response_type=code`
-        + `&access_type=offline`;
-
-    console.log("🔹 Google 로그인 URL:", authUrl);
-    res.json({ authUrl });
+  const authUrl = `https://accounts.google.com/o/oauth2/auth?client_id=${GOOGLE_CLIENT_ID}&redirect_uri=${REDIRECT_URI}&scope=openid%20email%20profile&response_type=code&access_type=offline`;
+  return res.json({ authUrl });
 };
 
-// ✅ Google OAuth 콜백 처리 (토큰 발급 및 사용자 정보 가져오기)
+/**
+ * 🔹 2️⃣ Google OAuth 콜백 (인가 코드 받아서 사용자 정보 조회 후 응답)
+ */
 const googleCallback = async (req, res) => {
+  const { code } = req.query;
+  if (!code) {
+    console.error("❌ 인가 코드 없음!");
+    return res.status(400).json({ message: "❌ 인가 코드가 없습니다." });
+  }
 
-    console.log("✅ 요청 도착! URL:", req.url);
-    console.log("✅ 받은 쿼리:", req.query);  // 🔹 `code` 확인 로그 추가
+  try {
+    // ✅ Google에서 Access Token 요청
+    const tokenResponse = await axios.post("https://oauth2.googleapis.com/token", {
+      client_id: GOOGLE_CLIENT_ID,
+      client_secret: GOOGLE_CLIENT_SECRET,
+      redirect_uri: REDIRECT_URI,
+      grant_type: "authorization_code",
+      code,
+    });
 
-    const code = req.query.code;  // ✅ `code` 값 추출 방식 변경
-    console.log("✅ 받은 인가 코드:", code); // 🔹 확인용 로그 추가
-
-        if (!code || code === "undefined" || code === "null") {
-        console.error("❌ 인가 코드 없음!");
-        return res.status(400).json({ message: "❌ 인가 코드가 없습니다." });
+    const { access_token } = tokenResponse.data;
+    if (!access_token) {
+      console.error("❌ Access Token 받기 실패!");
+      return res.status(400).json({ message: "❌ Access Token을 받을 수 없습니다." });
     }
 
+    // ✅ Access Token으로 사용자 정보 요청
+    const userInfoResponse = await axios.get("https://www.googleapis.com/oauth2/v2/userinfo", {
+      headers: { Authorization: `Bearer ${access_token}` },
+    });
 
-    let access_token = null; // ✅ 토큰을 try 바깥에서 선언하여 유지
-    let refresh_token = null;
-    let userInfo = null;
-    
-    try {
-        // ✅ 1. Google OAuth 토큰 요청
-        const tokenResponse = await axios.post("https://oauth2.googleapis.com/token", {
-            client_id: GOOGLE_CLIENT_ID,
-            client_secret: GOOGLE_CLIENT_SECRET,
-            redirect_uri: REDIRECT_URI,
-            grant_type: "authorization_code",
-            code
-        });
-    
-        access_token = tokenResponse.data.access_token;
-        refresh_token = tokenResponse.data.refresh_token;
-    
-        if (!access_token) throw new Error("Google에서 액세스 토큰을 받지 못했습니다.");
-        if (!refresh_token) console.warn("⚠️ Google에서 Refresh Token을 제공하지 않았습니다.");
-    } catch (error) {
-        console.error("❌ Google OAuth 토큰 요청 실패:", error.message);
-        return res.status(500).json({ message: "Google 로그인 실패 (토큰 요청)", error: error.message });
-    }
-    
-    try {
-        // ✅ 2. Google 사용자 정보 가져오기 & 이메일 검증
-        const userInfoResponse = await axios.get("https://www.googleapis.com/oauth2/v2/userinfo", {
-            headers: { Authorization: `Bearer ${access_token}` }
-        });
-    
-        userInfo = userInfoResponse.data;
-        if (!userInfo.email.endsWith("@g.yju.ac.kr")) {
-            return res.status(403).json({ message: "❌ 유효하지 않은 이메일입니다. 학교 이메일을 사용하세요." });
-        }
-    } catch (error) {
-        console.error("❌ Google 사용자 정보 가져오기 실패:", error.message);
-        return res.status(500).json({ message: "Google 로그인 실패 (사용자 정보)", error: error.message });
-    }
-    
-    try {
-        // ✅ 3. MySQL에서 기존 사용자 확인
-        db.query("SELECT * FROM users WHERE google_id = ?", [userInfo.id], (err, results) => {
-            if (err) {
-                console.error("❌ DB 조회 오류:", err);
-                return res.status(500).json({ message: "서버 오류 (DB 조회)", error: err });
+    const userInfo = userInfoResponse.data;
+    console.log("✅ Google 사용자 정보:", userInfo);
+
+    // ✅ @g.yju.ac.kr 이메일 검증 추가
+    if (!userInfo.email.endsWith("@g.yju.ac.kr")) {
+      console.log("❌ 유효하지 않은 이메일:", userInfo.email);
+      return res.send(`
+        <script>
+          window.opener.postMessage({ error: "유효한 이메일이 아닙니다." }, "http://localhost:5173");
+          window.close();
+        </script>
+      `);
+    }    
+
+    // ✅ DB에서 사용자 확인
+    db.query("SELECT * FROM users WHERE email = ?", [userInfo.email], (err, results) => {
+      if (err) {
+        console.error("❌ DB 조회 오류:", err);
+        return res.status(500).json({ message: "❌ 서버 오류 발생", error: err });
+      }
+
+      // ✅ 회원가입이 필요한 경우
+      if (results.length === 0) {
+        console.log("🚀 회원가입 필요!");
+        return res.send(`
+          <script>
+            window.opener.postMessage({ needRegister: true, email: "${userInfo.email}" }, "http://localhost:5173");
+            window.close();
+          </script>
+        `);
+      }
+
+      // ✅ 기존 회원이면 JWT 발급
+      const user = results[0];
+
+      // ✅ 승인 대기 상태 확인
+      if (user.is_verified === 0) {
+        console.log("⏳ 승인 대기 상태:", user.email);
+        return res.send(`
+          <script>
+            if (!window.sessionStorage.getItem("approvalPending")) {
+              window.sessionStorage.setItem("approvalPending", "true");
+              window.opener.postMessage({ error: "승인 대기 중입니다." }, "http://localhost:5173");
             }
-    
-            if (results.length === 0) {
-                return res.status(200).json({ 
-                    message: "회원가입이 필요합니다.", 
-                    needRegister: true,
-                    email: userInfo.email
-                });
-            }
-    
-            const user = results[0];
-    
-            // ✅ Refresh Token을 HttpOnly 쿠키에 저장
-            res.cookie("refreshToken", refresh_token, {
-                httpOnly: true,
-                secure: true,
-                sameSite: "Strict",
-                maxAge: 7 * 24 * 60 * 60 * 1000
-            });
-    
-            // ✅ JWT 발급
-            const jwtToken = jwt.sign(
-                {
-                    sub: user.google_id,
-                    email: user.email,
-                    name: user.name,
-                    role: user.role,
-                    is_verified: user.is_verified
-                },
-                JWT_SECRET,
-                { expiresIn: "1h" }
-            );
-    
-            // ✅ 프론트엔드에 JWT 토큰 반환
-            res.json({ jwtToken });
-        });
-    } catch (error) {
-        console.error("❌ JWT 발급 또는 DB 처리 중 오류:", error.message);
-        return res.status(500).json({ message: "로그인 실패 (JWT 발급)", error: error.message });
-    }
-    
-}    
+            window.close();
+          </script>
+        `);
+      }
 
-module.exports = { getGoogleAuthUrl, googleCallback };
+      const jwtToken = jwt.sign(
+        {
+          sub: user.google_id || "unknown",  // ✅ google_id가 없을 경우 'unknown'으로 설정
+          email: user.email,
+          name: user.name,
+          role: user.role || "student",  // ✅ 기본값 'student'
+          is_verified: user.is_verified || 0, // ✅ 기본값 0 (false)
+        },
+        JWT_SECRET,
+        { expiresIn: "1h" }
+      );
+
+      console.log("✅ 로그인 성공! JWT 발급 완료:", jwtToken);
+
+      // ✅ JWT 토큰과 역할을 프론트엔드로 전달 후 창 닫기
+      return res.send(`
+        <script>
+          window.opener.postMessage({ token: "${jwtToken}", role: "${user.role || "student"}" }, "http://localhost:5173");
+          window.close();
+        </script>
+      `);
+    });
+  } catch (error) {
+    console.error("❌ Google OAuth 처리 중 오류 발생:", error.message);
+    return res.status(500).json({ message: "Google 로그인 실패", error: error.message });
+  }
+};
+
+module.exports = {
+  getGoogleAuthUrl,
+  googleCallback,
+};

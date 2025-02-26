@@ -1,5 +1,16 @@
 const db = require("../config/db");
 
+
+const getPendingUsers = (req, res) => {
+    const query = "SELECT name, email, student_id, phone, grade, is_foreign FROM users WHERE is_verified = 0";
+
+    db.query(query, (err, results) => {
+        if (err) return res.status(500).json({ message: "❌ 사용자 목록 불러오기 실패", error: err });
+
+        res.json(results);
+    });
+};
+
 const registerUser = (req, res) => {
     const { name, studentId, phone, grade, isForeign, email } = req.body;
 
@@ -24,11 +35,15 @@ const registerUser = (req, res) => {
         const values = [name, studentId, phone, grade, isForeign, email, false]; // 관리자가 승인해야 하므로 기본값: false
 
         db.query(query, values, (err, result) => {
-            if (err) return res.status(500).json({ message: "❌ 회원가입 실패", error: err });
-
+            if (err) {
+                console.error("❌ 회원가입 중 DB 오류 발생:", err);
+                return res.status(500).json({ message: "❌ 회원가입 실패", error: err });
+            }
+        
+            console.log("✅ 회원가입 성공!");
             res.json({ success: true, message: "✅ 회원가입 신청 완료! 관리자의 승인을 기다려주세요." });
         });
     });
 };
 
-module.exports = { registerUser };
+module.exports = { getPendingUsers, registerUser };

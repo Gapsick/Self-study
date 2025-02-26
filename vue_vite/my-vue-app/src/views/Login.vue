@@ -1,74 +1,55 @@
-<script setup>
-import { nextTick, onMounted } from "vue";
-import { useRouter } from "vue-router";
-import axios from "axios";
-
-const router = useRouter();
-
-// ✅ Google 로그인 버튼 클릭 시 백엔드에서 로그인 URL 요청
-async function googleLogin() {
-    try {
-        console.log("🔹 Google 로그인 요청 시작!");
-        const response = await axios.get("http://localhost:5000/api/auth/google/url");
-        console.log("🔹 Google 로그인 URL:", response.data.authUrl);
-        window.location.href = response.data.authUrl; // ✅ Google 로그인 페이지로 이동
-    } catch (error) {
-        console.error("🚨 Google 로그인 URL 요청 실패:", error);
-        alert("Google 로그인 URL 요청 실패!");
-    }
-}
-
-// ✅ Google OAuth 후 받은 인증 코드 처리 (백엔드로 전송)
-async function handleOAuthCallback(code) {
-    try {
-        console.log("🔹 OAuth Callback 실행! Code:", code);
-        const response = await axios.post("http://localhost:5000/api/auth/google", { code });
-
-        console.log("🔹 백엔드 응답 확인:", response.data);
-
-        if (response.data.needRegister) {
-            console.log("🚀 회원가입이 필요함! `/register`로 이동.");
-            localStorage.setItem("register_email", response.data.email);
-
-            await nextTick();
-
-            setTimeout(() => {
-                router.push("/register"); // ✅ 100ms 후 강제 실행
-            }, 100);
-        } else if (response.data.jwtToken) {
-            console.log("✅ 로그인 성공! JWT 저장 완료.");
-            localStorage.setItem("token", response.data.jwtToken);
-            router.push("/main");
-        } else {
-            alert("로그인 중 문제가 발생했습니다.");
-            router.push("/login");
-        }
-    } catch (error) {
-        console.error("🚨 로그인 실패:", error);
-        alert("Google 로그인 실패!");
-        router.push("/login");
-    }
-}
-
-
-onMounted(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const code = urlParams.get("code");
-
-
-    console.log("🌐 현재 URL:", window.location.href); // ✅ 현재 URL 확인
-    console.log("📌 `code` 값 확인:", code ? code : "❌ 없음!");
-
-
-    if (code) {
-        handleOAuthCallback(code);
-    }
-});
-</script>
-
 <template>
     <div>
-        <h1>Google 로그인</h1>
-        <button @click="googleLogin">Google 로그인</button>
+      <h1>Google 로그인</h1>
+      <button @click="openGooglePopup">Google 로그인 (팝업)</button>
     </div>
-</template>
+  </template>
+  
+  <script setup>
+  import { useRouter } from "vue-router";
+  import axios from "axios";
+  
+  const router = useRouter();
+  
+  // ✅ Google 로그인 팝업 열기
+  async function openGooglePopup() {
+    try {
+      // 🔹 백엔드에서 Google 로그인 URL 가져오기
+      const response = await axios.get("http://localhost:5000/api/auth/google/url");
+      const googleLoginUrl = response.data.authUrl;
+  
+      // 🔹 팝업 창 열기
+      const popup = window.open(
+        googleLoginUrl,
+        "Google Login",
+        "width=500,height=600"
+      );
+  
+      // ✅ 팝업 창에서 인증 완료 후 메시지를 받을 이벤트 리스너 추가
+      window.addEventListener("message", (event) => {
+        if (event.origin !== "http://localhost:5000") return; // 보안 체크
+        
+        console.log("✅ 메인 창에서 받은 메시지:", event.data);
+
+        if (event.data.error) {
+            alert(event.data.error); // 🚨 에러 메시지 출력 (유효하지 않은 이메일 또는 승인 대기)
+            return;
+        }        
+  
+        if (event.data.token) {
+          localStorage.setItem("token", event.data.token);
+          localStorage.setItem("role", event.data.role); // ✅ 역할 정보 저장
+          localStorage.setItem("userName", event.data.name);
+          router.push("/main");
+        } else if (event.data.needRegister) {
+          localStorage.setItem("register_email", event.data.email);
+          router.push("/register");
+        }
+      });
+    } catch (error) {
+      console.error("🚨 Google 로그인 URL 요청 실패:", error);
+      alert("Google 로그인 URL 요청 실패!");
+    }
+  }
+  </script>
+  
