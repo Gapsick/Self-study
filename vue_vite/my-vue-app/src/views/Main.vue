@@ -31,6 +31,9 @@
     <button @click="$router.push('/schedule')">📅 일정 페이지로 이동</button>
 
     <br /><br />
+    <button @click="goToNotices">📢 공지사항 보기</button>
+
+    <br /><br />
     <button @click="logout">로그아웃</button>
 
     <br /><br />
@@ -90,6 +93,9 @@ export default {
     goToAdminPage() {
       this.router.push("/admin");
     },
+    goToNotices() {
+      this.router.push("/notices");
+    }, 
     updateUserRole() {
       this.userRole = localStorage.getItem("role");
       this.isAdmin = this.userRole === "admin";
