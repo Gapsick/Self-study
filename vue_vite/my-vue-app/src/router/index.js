@@ -7,6 +7,7 @@ import Admin from "@/views/Admin.vue";
 import NoticeList from "@/views/Notice.vue";
 import NoticeDetail from "@/views/NoticeDetail.vue";
 import NoticeForm from "@/views/NoticeForm.vue";
+import NoticeWrite from "@/views/NoticeWrite.vue";
 
 
 
@@ -19,7 +20,8 @@ const routes = [
   { path: "/admin", component: Admin },
   { path: "/notices", component: NoticeList }, // 🔹 공지사항 목록
   { path: "/notices/:id", component: NoticeDetail }, // 🔹 공지사항 상세
-  { path: "/notices/new", component: NoticeForm } // 🔹 공지사항 작성 (관리자 전용)
+  { path: "/notices/new", component: NoticeForm }, // 🔹 공지사항 작성 (관리자 전용)
+  { path: "/notices/write", component: NoticeWrite }
 ];
 
 const router = createRouter({

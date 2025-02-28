@@ -11,7 +11,12 @@ const subjectRoutes = require("./routes/subjectRoutes");
 
 const app = express();
 
-app.use(cors());
+// ✅ CORS 설정 (프론트엔드 도메인 허용)
+app.use(cors({
+  origin: "http://localhost:5173", // ✅ Vue.js 프론트엔드 주소
+  credentials: true,  // ✅ 쿠키 및 인증 정보 전달 허용
+}));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

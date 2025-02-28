@@ -104,6 +104,7 @@ export default {
     logout() {
       localStorage.removeItem("jwtToken");
       localStorage.removeItem("token");
+      localStorage.removeItem("refreshToken"); // ✅ Refresh Token 삭제
       localStorage.removeItem("userInfo");
       localStorage.removeItem("googleAccessToken");
       localStorage.removeItem("role");

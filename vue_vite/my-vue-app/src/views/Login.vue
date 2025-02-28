@@ -37,14 +37,22 @@
         }        
   
         if (event.data.token) {
-          localStorage.setItem("token", event.data.token);
-          localStorage.setItem("role", event.data.role); // ✅ 역할 정보 저장
-          localStorage.setItem("userName", event.data.name);
-          router.push("/main");
-        } else if (event.data.needRegister) {
-          localStorage.setItem("register_email", event.data.email);
-          router.push("/register");
-        }
+        console.log("📢 (login.vue) 저장할 Access Token:", event.data.token);
+        console.log("📢 (login.vue) 저장할 Refresh Token:", event.data.refreshToken || "없음");  // ✅ 디버깅용 콘솔 추가
+
+        localStorage.setItem("token", event.data.token);
+        localStorage.setItem("refreshToken", event.data.refreshToken || ""); // ✅ Refresh Token 저장
+        localStorage.setItem("userEmail", event.data.email);
+        localStorage.setItem("role", event.data.role);
+        localStorage.setItem("userName", event.data.name);
+
+        console.log("🔍 (login.vue) 저장 후 Refresh Token 확인:", localStorage.getItem("refreshToken"));
+
+        router.push("/main");
+      } else if (event.data.needRegister) {
+        localStorage.setItem("register_email", event.data.email);
+        router.push("/register");
+      }
       });
     } catch (error) {
       console.error("🚨 Google 로그인 URL 요청 실패:", error);
