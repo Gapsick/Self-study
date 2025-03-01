@@ -41,6 +41,7 @@
         <tr>
           <th>번호</th>
           <th>제목</th>
+          <th>파일</th> <!-- 🔹 파일 다운로드 열 추가 -->
           <th>대상학년</th>
           <th>과목</th>
           <th>작성자</th>
@@ -52,8 +53,19 @@
         <tr v-for="notice in sortedNotices" :key="notice.id">
           <td>{{ notice.id }}</td>
           <td>
-            <span v-if="notice.is_pinned">📌</span> <!-- 🔹 고정된 공지사항 아이콘 추가 -->
-            {{ notice.title }}
+          <span v-if="notice.is_pinned">📌</span> <!-- 🔹 고정된 공지사항 강조 -->
+          <router-link :to="`/notices/${notice.id}`">{{ notice.title }}</router-link>
+          </td>
+          <td>
+            <!-- 🔹 파일이 있으면 다운로드 버튼 표시 -->
+            <a 
+              v-if="notice.file_path" 
+              :href="`http://localhost:5000/${notice.file_path}`" 
+              target="_blank" 
+              download
+            >
+              📂 다운로드
+            </a>
           </td>
           <td>{{ notice.academic_year ? `${notice.academic_year}학년` : "전체" }}</td>
           <td>{{ getSubjectName(notice.subject_id) }}</td>
@@ -65,6 +77,7 @@
     </table>
   </div>
 </template>
+
 
 <script>
 import { ref, computed, onMounted, watchEffect } from "vue";
@@ -84,7 +97,7 @@ export default {
     const router = useRouter(); // ✅ Vue Router 인스턴스 생성    
 
     // 🔹 사용자 역할 가져오기
-    const userRole = ref(localStorage.getItem("role"));  // ✅ 직접 localStorage에서 가져오기
+    const userRole = ref(localStorage.getItem("role"));  
     const isAdmin = ref(userRole.value === "admin" || userRole.value === "professor");
 
     console.log("📢 (Notice.vue) localStorage에서 가져온 역할:", userRole.value);
@@ -100,15 +113,15 @@ export default {
       }
     });
 
-    // 🔹 작성 페이지로 이동 (Vue Router 사용)
+    // 🔹 작성 페이지로 이동
     const goToWritePage = () => {
-      router.push("/notices/write"); // ✅ Vue Router로 페이지 이동
+      router.push("/notices/write");
     };
 
     // 🔹 학년 변경 시 해당 학년 과목 불러오기
     const selectYear = async (year) => {
       selectedYear.value = year;
-      selectedSubject.value = "전체"; // 과목도 초기화
+      selectedSubject.value = "전체"; 
       try {
         subjects.value = await fetchSubjectsByYear(year);
         console.log("📚 학년별 과목 데이터:", subjects.value);
@@ -129,48 +142,48 @@ export default {
       }
     });
 
-    // 🔹 정렬된 공지사항 목록 (고정된 공지사항을 맨 위에 표시)
+    // 🔹 정렬된 공지사항 목록 (고정된 공지사항을 특정 학년별로 유지)
     const sortedNotices = computed(() => {
-      let filtered = notices.value;
+      let pinnedNotices = [];
+      let filteredNotices = notices.value;
 
-      // 고정된 공지사항 우선 표시
-      filtered.sort((a, b) => {
-        if (a.is_pinned && !b.is_pinned) return -1;
-        if (!a.is_pinned && b.is_pinned) return 1;
-        return new Date(b.created_at) - new Date(a.created_at);
-      });
+      // 🔹 고정된 공지사항을 분리
+      pinnedNotices = notices.value.filter(
+        notice => notice.is_pinned && (notice.academic_year === null || notice.academic_year == selectedYear.value)
+      );
 
-      // 학년 필터
+      // 🔹 일반 공지사항 필터
       if (selectedYear.value !== "전체") {
-        filtered = filtered.filter(notice => notice.academic_year == selectedYear.value);
+        filteredNotices = filteredNotices.filter(notice => notice.academic_year == selectedYear.value);
       }
 
-      // 과목 필터
+      // 🔹 과목 필터
       if (selectedSubject.value !== "전체") {
-        filtered = filtered.filter(notice => notice.subject_id == selectedSubject.value);
+        filteredNotices = filteredNotices.filter(notice => notice.subject_id == selectedSubject.value);
       }
 
-      // 검색 필터
+      // 🔹 검색 필터
       if (searchQuery.value.trim() !== "") {
-        filtered = filtered.filter(notice =>
+        filteredNotices = filteredNotices.filter(notice =>
           notice.title.includes(searchQuery.value) || 
           notice.content.includes(searchQuery.value)
         );
       }
 
-      return filtered;
+      // 🔹 고정된 공지사항을 맨 위로 정렬
+      return [...pinnedNotices, ...filteredNotices];
     });
 
     // 🔹 검색 실행 함수
     const performSearch = () => {
-      searchQuery.value = searchQuery.value.trim(); // 불필요한 공백 제거
+      searchQuery.value = searchQuery.value.trim();
     };
 
     // 🔹 초기화 함수
     const resetFilters = () => {
-      searchQuery.value = "";  // 검색어 초기화
-      selectedYear.value = "전체";  // 학년 초기화
-      selectedSubject.value = "전체";  // 과목 초기화
+      searchQuery.value = "";  
+      selectedYear.value = "전체";  
+      selectedSubject.value = "전체";  
     };
 
     // 🔹 과목 ID를 이름으로 변환하는 함수

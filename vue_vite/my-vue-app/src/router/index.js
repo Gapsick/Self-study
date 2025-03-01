@@ -4,10 +4,12 @@ import Main from "@/views/Main.vue";
 import Schedule from "@/views/Schedule.vue";
 import Register from "@/views/Register.vue";
 import Admin from "@/views/Admin.vue";
+
 import NoticeList from "@/views/Notice.vue";
 import NoticeDetail from "@/views/NoticeDetail.vue";
 import NoticeForm from "@/views/NoticeForm.vue";
 import NoticeWrite from "@/views/NoticeWrite.vue";
+import NoticeEdit from "@/views/NoticeEdit.vue"; // ✅ 추가
 
 
 
@@ -21,7 +23,8 @@ const routes = [
   { path: "/notices", component: NoticeList }, // 🔹 공지사항 목록
   { path: "/notices/:id", component: NoticeDetail }, // 🔹 공지사항 상세
   { path: "/notices/new", component: NoticeForm }, // 🔹 공지사항 작성 (관리자 전용)
-  { path: "/notices/write", component: NoticeWrite }
+  { path: "/notices/write", component: NoticeWrite },
+  { path: "/notices/edit/:id", component: NoticeEdit }, // ✅ 수정 페이지 추가
 ];
 
 const router = createRouter({
