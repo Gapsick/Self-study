@@ -76,6 +76,8 @@ const updateNotice = async (req, res) => {
     const { title, content, academic_year, is_pinned, removeFile } = req.body;
     let filePath = null;
 
+    console.log("🚀 [백엔드] 수신된 데이터:", req.body); // ✅ 요청 데이터 확인
+
     // 🔹 새로운 파일 업로드 확인
     if (req.file) {
       filePath = `uploads/${req.file.filename}`;
@@ -83,13 +85,14 @@ const updateNotice = async (req, res) => {
 
     // 🔹 기존 파일 삭제 요청 확인
     if (removeFile === "true") {
-      const [[existingNotice]] = await db.promise().query("SELECT file_path FROM notices WHERE id = ?", [noticeId]);
+      const [[existingNotice]] = await db
+        .promise()
+        .query("SELECT file_path FROM notices WHERE id = ?", [noticeId]);
 
       if (existingNotice && existingNotice.file_path) {
         const oldFilePath = path.join(__dirname, "..", existingNotice.file_path);
         console.log("📢 삭제할 파일 경로:", oldFilePath);
 
-        // ✅ 파일이 존재하면 동기적으로 삭제 (순차적 실행을 위해)
         if (fs.existsSync(oldFilePath)) {
           try {
             fs.unlinkSync(oldFilePath);
@@ -101,12 +104,23 @@ const updateNotice = async (req, res) => {
           console.warn("⚠ 기존 파일이 존재하지 않음:", oldFilePath);
         }
       }
-      filePath = null; // 기존 파일 삭제 시 DB에서 NULL 처리 필요
+      filePath = null;
     }
 
+    // 🔹 `academic_year` 값 확인 (수정 가능 여부 체크)
+    console.log("📌 academic_year 값 확인:", academic_year, "타입:", typeof academic_year);
+
     // 🔹 SQL 업데이트 문 생성
-    let sql = "UPDATE notices SET title=?, content=?, academic_year=?, is_pinned=?, file_path=? WHERE id=?";
-    let values = [title, content, academic_year || null, is_pinned === "1" ? 1 : 0, filePath, noticeId];
+    let sql =
+      "UPDATE notices SET title=?, content=?, academic_year=?, is_pinned=?, file_path=? WHERE id=?";
+    let values = [
+      title,
+      content,
+      academic_year || null, // ✅ 숫자가 아닐 경우 NULL 처리
+      is_pinned === "1" ? 1 : 0,
+      filePath,
+      noticeId,
+    ];
 
     // 🔹 기존 파일 삭제 요청이 있었고, 새로운 파일이 없을 경우 file_path를 NULL로 저장
     if (removeFile === "true" && !req.file) {
@@ -114,15 +128,17 @@ const updateNotice = async (req, res) => {
       values = [title, content, academic_year || null, is_pinned === "1" ? 1 : 0, noticeId];
     }
 
-    await db.promise().query(sql, values);
-    
-    console.log("✅ 공지사항 수정 완료!");
+    const [result] = await db.promise().query(sql, values);
+    console.log("✅ [백엔드] SQL 실행 결과:", result);
+
     res.json({ message: "공지사항이 수정되었습니다!" });
   } catch (err) {
     console.error("❌ 공지사항 수정 실패:", err);
     res.status(500).json({ message: "공지사항을 수정할 수 없습니다." });
   }
 };
+
+
 
 
 

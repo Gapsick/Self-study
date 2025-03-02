@@ -186,3 +186,17 @@ export async function updateNotice(noticeId, noticeData) {
     return { error: "공지사항 수정 실패" };
   }
 }
+
+// 🔹 특정 공지사항 조회 (fetchNoticeById 추가)
+export async function fetchNoticeById(noticeId) {
+  console.log(`📢 (noticeApi.js) API 호출: /api/notices/${noticeId}`);
+
+  try {
+    const response = await axios.get(`${API_BASE_URL}/notices/${noticeId}`);
+    console.log("📢 (noticeApi.js) 응답 데이터:", response.data);
+    return response.data;
+  } catch (error) {
+    console.error("❌ (noticeApi.js) 공지사항 조회 실패:", error);
+    return null;
+  }
+}
