@@ -9,7 +9,7 @@
       <textarea v-model="notice.content" required></textarea>
 
       <label>학년</label>
-      <select v-model="notice.academic_year">
+      <select v-model="selectedYear">
         <option value="">전체</option>
         <option value="1">1학년</option>
         <option value="2">2학년</option>
@@ -20,7 +20,7 @@
       <select v-model="notice.subject_id">
         <option value="">과목 선택</option>
         <option v-for="subject in subjects" :key="subject.id" :value="subject.id">
-          {{ subject.name }}
+          {{ getSubjectName(subject.id) }}
         </option>
       </select>
 
@@ -28,9 +28,11 @@
       <input type="checkbox" v-model="notice.is_pinned" />
 
       <div v-if="notice.file_path">
-        <p>기존 파일: <a :href="`http://localhost:5000/${notice.file_path}`" target="_blank">
-          {{ getFileName(notice.file_path) }}
-        </a></p>
+        <p>기존 파일: 
+          <a :href="`http://localhost:5000/${notice.file_path}`" target="_blank">
+            {{ getFileName(notice.file_path) }}
+          </a>
+        </p>
         <button type="button" @click="removeExistingFile">파일 삭제</button>
       </div>
 
@@ -44,7 +46,7 @@
 </template>
 
 <script>
-import { ref, onMounted, watch } from "vue";
+import { ref, onMounted, watchEffect } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { fetchNoticeDetail, updateNotice } from "@/api/noticeApi";
 import { useSubjects } from "@/composables/useSubjects";
@@ -54,24 +56,62 @@ export default {
     const route = useRoute();
     const router = useRouter();
     const notice = ref({});
-    const newFile = ref(null);
-    const removeFile = ref(false);
     const selectedYear = ref("");
     const { subjects, loadSubjects } = useSubjects(selectedYear);
+    const newFile = ref(null);
+    const removeFile = ref(false);
 
+    // 🔹 공지사항 데이터 불러오기
     onMounted(async () => {
       const data = await fetchNoticeDetail(route.params.id);
-      if (data) {
-        notice.value = data;
-        selectedYear.value = data.academic_year || "";
-        await loadSubjects();
+      console.log("📢 (onMounted) 백엔드에서 불러온 데이터:", data);
+
+      if (!data.subject_id) {
+        console.warn("🚨 subject_id가 없거나 null → 기본값 설정");
+        data.subject_id = ""; // 기본값 설정
+      }
+
+      notice.value = data;
+      selectedYear.value = data.academic_year || "";
+
+      await loadSubjects(); // 과목 데이터 불러오기
+      console.log("📢 (onMounted) 과목 불러온 후 subjects:", subjects.value);
+
+      if (subjects.value.length === 0) {
+        console.warn("🚨 과목 데이터가 비어 있음!");
       }
     });
 
-    watch(selectedYear, async () => {
-      console.log("📢 학년 변경 감지됨:", selectedYear.value);
-      await loadSubjects();
-      console.log("📢 학년 변경 후 subjects 값:", subjects.value);
+    // 🔹 과목명 찾는 함수 추가!
+    const getSubjectName = (subjectId) => {
+      if (!subjects.value || subjects.value.length === 0) {
+        console.warn("📌 subjects가 아직 로드되지 않음.");
+        return "로딩 중...";
+      }
+
+      const subject = subjects.value.find(subj => subj.id === subjectId);
+      return subject ? subject.name : "과목 없음";
+    };
+
+    // 🔹 과목 목록이 변경될 때 subject_id 자동 설정
+    watchEffect(() => {
+      console.log("📢 watchEffect 실행 - 현재 subjects 값:", subjects.value);
+
+      if (subjects.value.length === 0) {
+        console.warn("🚨 subjects 배열이 비어 있음! 데이터 로딩 완료 후 다시 실행 예정...");
+        return;
+      }
+
+      console.log("📢 watchEffect 실행 - 기존 notice.subject_id 값:", notice.value.subject_id);
+
+      if (!notice.value.subject_id || !subjects.value.some(subject => subject.id === notice.value.subject_id)) {
+        console.log("🚨 기존 subject_id가 유효하지 않음 → 첫 번째 과목으로 설정!");
+        notice.value.subject_id = subjects.value[0].id;
+      } else {
+        console.log("✅ subject_id가 유효함:", notice.value.subject_id);
+      }
+
+      console.log("📢 watchEffect 실행 후 설정된 notice.subject_id:", notice.value.subject_id);
     });
 
     const handleFileUpload = (event) => {
@@ -110,12 +150,13 @@ export default {
         alert("수정 실패: " + response.error);
       }
     };
+    const getFileName = (filePath) => {
+  return filePath ? filePath.split("/").pop() : "";
+   };
+   const cancelEdit = () => {
+  router.push(`/notices/${route.params.id}`);
+};
 
-    const getFileName = (filePath) => filePath ? filePath.split("/").pop() : "";
-
-    const cancelEdit = () => {
-      router.push(`/notices/${route.params.id}`);
-    };
 
     return {
       notice,
@@ -128,6 +169,8 @@ export default {
       updateNoticeData,
       getFileName,
       cancelEdit,
+      getSubjectName, // ✅ 추가!
+      getFileName,
     };
   },
 };

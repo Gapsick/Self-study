@@ -24,7 +24,7 @@ export const fetchNotices = async () => {
   }
 };
 
-// 🔹 공지사항 상세 조회
+// 🔹 공지사항 상세 조회 (수정된 버전)
 export async function fetchNoticeDetail(noticeId) {
   console.log(`📢 (noticeApi.js) API 호출: /api/notices/${noticeId}`);
 
@@ -37,12 +37,21 @@ export async function fetchNoticeDetail(noticeId) {
       return null;
     }
 
+    // ✅ subject_id가 존재하는지 확인
+    if (!response.data.hasOwnProperty("subject_id") || response.data.subject_id === null) {
+      console.warn("⚠️ (noticeApi.js) 응답에 subject_id가 없음 → 기본값 null 유지!");
+      response.data.subject_id = null;  // ✅ 기본값을 null로 유지
+    }     else {
+      console.log("✅ (noticeApi.js) subject_id 확인:", response.data.subject_id);
+    }
+
     return response.data;
   } catch (error) {
     console.error("❌ (noticeApi.js) 공지사항 상세 조회 실패:", error);
     return null;
   }
 }
+
 
 
 // 🔹 공지사항 작성 (FormData 사용)
@@ -184,19 +193,5 @@ export async function updateNotice(noticeId, noticeData) {
   } catch (error) {
     console.error("❌ 공지사항 수정 오류:", error.response?.data || error);
     return { error: "공지사항 수정 실패" };
-  }
-}
-
-// 🔹 특정 공지사항 조회 (fetchNoticeById 추가)
-export async function fetchNoticeById(noticeId) {
-  console.log(`📢 (noticeApi.js) API 호출: /api/notices/${noticeId}`);
-
-  try {
-    const response = await axios.get(`${API_BASE_URL}/notices/${noticeId}`);
-    console.log("📢 (noticeApi.js) 응답 데이터:", response.data);
-    return response.data;
-  } catch (error) {
-    console.error("❌ (noticeApi.js) 공지사항 조회 실패:", error);
-    return null;
   }
 }
