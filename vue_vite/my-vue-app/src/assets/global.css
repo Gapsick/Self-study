@@ -6,6 +6,7 @@
     --text-color: #333;
     --button-hover-color: #3a7bd5;
     --border-color: #ccc;
+    --table-header-bg: #e6f0ff;
   }
   
   body {
@@ -14,122 +15,148 @@
     margin: 0;
     padding: 0;
     color: var(--text-color);
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* 페이지 중앙 정렬 */
   }
   
-  button {
-    background-color: var(--primary-color);
-    color: var(--secondary-color);
-    border: none;
-    padding: 8px 12px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 14px;
-    transition: background 0.3s;
-  }
-  
-  button:hover {
-    background-color: var(--button-hover-color);
-  }
-  
-  input, select, textarea {
+  /* 네비게이션 바 스타일 */
+  .navbar {
     width: 100%;
-    padding: 6px;
-    margin: 6px 0;
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    font-size: 14px;
+    background: var(--primary-color);
+    color: white;
+    padding: 12px 0;
+    display: flex;
+    justify-content: center; /* 중앙 정렬 */
+    align-items: center;
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 1000;
   }
   
+  .navbar-container {
+    width: 90%;
+    max-width: 1200px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .logo {
+    font-size: 20px;
+    font-weight: bold;
+    color: white;
+    text-decoration: none;
+  }
+  
+  .nav-links {
+    display: flex;
+    gap: 20px;
+    list-style: none;
+  }
+  
+  .nav-links a {
+    color: white;
+    text-decoration: none;
+    font-weight: bold;
+  }
+  
+  .nav-links a:hover {
+    text-decoration: underline;
+  }
+  
+  .nav-auth {
+    display: flex;
+    gap: 10px;
+  }
+  
+  /* 메인 컨텐츠 중앙 정렬 */
   .container {
-    max-width: 800px;
-    margin: auto;
-    background: #fff;
-    padding: 20px;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-    border-radius: 8px;
-  }
-  
-  /* 로그인 페이지 스타일 */
-  .login-container {
-    max-width: 400px;
-    margin: auto;
-    padding: 20px;
+    max-width: 1000px;
+    margin-top: 80px; /* 네비게이션 바 아래 위치 */
+    padding: 24px;
     background: #fff;
     border-radius: 8px;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
     text-align: center;
   }
   
-  /* 회원가입 스타일 */
-  .register-container {
-    max-width: 500px;
-    margin: auto;
-    padding: 20px;
-    background: #fff;
-    border-radius: 8px;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-  }
-  
-  /* 공지사항 스타일 */
-  .notice-container {
-    max-width: 800px;
-    margin: auto;
-    padding: 20px;
-    background: #fff;
-    border-radius: 8px;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-  }
-  
-  .notice-item {
-    padding: 12px;
-    border-bottom: 1px solid #ddd;
+  /* 버튼 스타일 */
+  button {
+    background-color: var(--primary-color);
+    color: var(--secondary-color);
+    border: none;
+    padding: 10px 14px;
+    border-radius: 6px;
     cursor: pointer;
-    transition: background 0.3s;
     font-size: 14px;
+    font-weight: bold;
+    min-width: 120px;
+    transition: background 0.3s, transform 0.2s;
   }
   
-  .notice-item:hover {
+  button:hover {
+    background-color: var(--button-hover-color);
+    transform: scale(1.05);
+  }
+  
+  /* 공지사항 테이블 중앙 정렬 */
+  .notice-container {
+    max-width: 1000px;
+    margin: auto;
+    padding: 24px;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    text-align: center;
+  }
+  
+  .notice-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  
+  .notice-table th, .notice-table td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+  }
+  
+  .notice-table th {
+    background: var(--table-header-bg);
+    font-weight: bold;
+  }
+  
+  .notice-table tr:nth-child(even) {
     background: #f9f9f9;
+  }
+  
+  .notice-table tr:hover {
+    background: #e6f0ff;
   }
   
   /* 일정 관리 스타일 */
   .schedule-container {
     max-width: 1000px;
     margin: auto;
-    padding: 20px;
+    padding: 24px;
     background: #fff;
     border-radius: 8px;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
   }
   
-  .month-header {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 15px;
-    margin-bottom: 20px;
-  }
-  
-  .month-button {
-    background: var(--primary-color);
-    color: var(--secondary-color);
-    border: none;
-    padding: 6px 10px;
-    cursor: pointer;
-    border-radius: 4px;
-    font-size: 14px;
-  }
-  
-  /* 관리자 페이지 스타일 */
+  /* 관리자 페이지 중앙 정렬 */
   .admin-container {
     max-width: 1000px;
     margin: auto;
-    padding: 20px;
+    padding: 24px;
     background: #fff;
     border-radius: 8px;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
   }
   
+  /* 에러 메시지 */
   .error-message {
     color: red;
     font-weight: bold;

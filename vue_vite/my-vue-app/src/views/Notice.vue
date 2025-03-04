@@ -16,7 +16,6 @@
         <tr>
           <th>번호</th>
           <th>제목</th>
-          <th>파일</th>
           <th>대상학년</th>
           <th>과목</th>
           <th>작성자</th>
@@ -31,16 +30,11 @@
             <span v-if="notice.is_pinned">📌</span>
             <router-link :to="`/notices/${notice.id}`">{{ notice.title }}</router-link>
           </td>
-          <td>
-            <a v-if="notice.file_path" :href="`http://localhost:5000/${notice.file_path}`" target="_blank" download>
-              📂 다운로드
-            </a>
-          </td>
           <td>{{ notice.academic_year ? `${notice.academic_year}학년` : "전체" }}</td>
           <td>{{ getSubjectName(notice.subject_id) }}</td>
-          <td>{{ notice.author || "미정" }}</td>
+          <td>{{ notice.author ? notice.author : "관리자" }}</td>
           <td>{{ formatDate(notice.created_at) }}</td>
-          <td>{{ notice.views }}</td>
+          <td>{{ notice.views || 0}}</td>
         </tr>
       </tbody>
     </table>
@@ -87,14 +81,16 @@ export default {
     });
 
     const getSubjectName = (subjectId) => {
-    if (!subjects.value || subjects.value.length === 0) {
-      console.warn("📌 subjects가 아직 로드되지 않음.");
-      return "로딩 중..."; // ✅ subjects가 아직 로드되지 않은 경우 예외 처리
-    }
+  if (!subjectId) return "공통"; // 전체 공지일 경우 "공통" 표시
+  if (!subjects.value || subjects.value.length === 0) {
+    console.warn("📌 subjects가 아직 로드되지 않음.");
+    return "로딩 중..."; 
+  }
+  
+  const subject = subjects.value.find(subj => subj.id == subjectId);
+  return subject ? subject.name : ""; // 과목 정보가 없으면 빈 값
+};
 
-    const subject = subjects.value.find(subj => subj.id == subjectId);
-    return subject ? subject.name : "알 수 없음";
-  };
 
 
     const goToWritePage = () => {
@@ -116,3 +112,4 @@ export default {
   },
 };
 </script>
+
