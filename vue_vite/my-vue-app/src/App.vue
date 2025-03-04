@@ -2,6 +2,8 @@
 import { useAuthStore } from "@/stores/useAuthStore";
 import { onMounted } from "vue";
 import { useRouter } from "vue-router";
+import "@/assets/global.css";
+import Navbar from "@/components/Navbar.vue";  // ✅ components 폴더에서 불러오기
 
 const authStore = useAuthStore();
 const router = useRouter();
@@ -18,5 +20,6 @@ onMounted(() => {
 </script>
 
 <template>
+  <Navbar />  <!-- 네비게이션 추가 -->
   <router-view /> <!-- 현재 라우트된 페이지 표시 -->
 </template>
