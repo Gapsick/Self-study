@@ -18,6 +18,10 @@ const getNotices = async (req, res) => {
 const getNoticeById = async (req, res) => {
   const noticeId = req.params.id;
   try {
+    
+    const updateSql = "UPDATE notices SET views = views + 1 WHERE id = ?";
+    await db.promise().query(updateSql, [noticeId]);
+
     const sql = "SELECT * FROM notices WHERE id = ?";
     const [rows] = await db.promise().query(sql, [noticeId]);
 
@@ -37,25 +41,33 @@ const createNotice = async (req, res) => {
     console.log("📢 (createNotice) 요청된 데이터:", req.body);
     console.log("📂 (createNotice) 업로드된 파일 정보:", req.file);
 
-    const { title, content, academic_year, subject_id, is_pinned } = req.body;
-    const file = req.file ? `uploads/${req.file.filename}` : null; // ✅ 파일 경로 설정
+    let { title, content, academic_year, subject_id, is_pinned, author } = req.body;
+    const file = req.file ? `uploads/${req.file.filename}` : null;
 
     if (!title || !content) {
       return res.status(400).json({ message: "제목과 내용은 필수 입력값입니다." });
     }
 
+    // ✅ academic_year 값 변환 (문자열 "null" -> 실제 null)
+    academic_year = (academic_year === "null" || academic_year === null) ? null : parseInt(academic_year, 10);
+    subject_id = (subject_id === "null" || subject_id === null) ? null : parseInt(subject_id, 10);
+    
+    // 🔹 작성자가 없을 경우 기본값 "관리자" 적용
+    const finalAuthor = author || "관리자";  
+
     // 🔹 SQL 실행
     const sql = `
-      INSERT INTO notices (title, content, academic_year, subject_id, file_path, is_pinned) 
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO notices (title, content, academic_year, subject_id, file_path, is_pinned, author) 
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     `;
     const values = [
       title,
       content,
-      academic_year || null,
-      subject_id || null,
+      academic_year, // ✅ 변환된 값 적용
+      subject_id,
       file,
-      is_pinned === "1" ? 1 : 0
+      is_pinned === "1" ? 1 : 0,
+      finalAuthor
     ];
 
     const [result] = await db.promise().query(sql, values);
@@ -67,6 +79,9 @@ const createNotice = async (req, res) => {
     res.status(500).json({ message: "공지사항을 작성할 수 없습니다." });
   }
 };
+
+
+
 
 
 // ✅ 공지사항 수정

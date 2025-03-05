@@ -1,5 +1,6 @@
 <template>
   <div>
+    <br><br><br><br>
     <h2>공지사항 작성</h2>
     <form @submit.prevent="submitForm">
       <div>

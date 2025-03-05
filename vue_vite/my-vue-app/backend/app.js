@@ -11,6 +11,25 @@ const subjectRoutes = require("./routes/subjectRoutes");
 
 const app = express();
 
+const path = require("path");
+const fs = require("fs");
+
+app.get("/uploads/:filename", (req, res) => {
+  const filename = req.params.filename;
+  const filePath = path.join(__dirname, "uploads", filename);
+
+  // 파일이 존재하는지 확인
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ message: "파일을 찾을 수 없습니다." });
+  }
+
+  // 📌 다운로드 헤더 추가
+  res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+  res.setHeader("Content-Type", "application/octet-stream");
+
+  res.download(filePath);
+});
+
 // ✅ CORS 설정 (프론트엔드 도메인 허용)
 app.use(cors({
   origin: "http://localhost:5173",

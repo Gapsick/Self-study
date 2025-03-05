@@ -81,32 +81,46 @@ export function useNoticeForm(initialData = {}) {
     }
   }
 
-  // 🔹 공지사항 저장 (작성 & 수정 통합)
-  async function submitNotice(isEdit = false, noticeId = null) {
-    const url = isEdit
-      ? `${API_BASE_URL}/notices/${noticeId}`
-      : `${API_BASE_URL}/notices`;
+// 🔹 공지사항 저장 (작성 & 수정 통합)
+async function submitNotice(isEdit = false, noticeId = null) {
+  const url = isEdit
+    ? `${API_BASE_URL}/notices/${noticeId}`
+    : `${API_BASE_URL}/notices`;
 
-    // ✅ 학년 값 변환
-    let processedAcademicYear = noticeData.value.academic_year;
-    if (processedAcademicYear === "전체") {
-      processedAcademicYear = null; // ✅ "전체"는 null 처리
-    } else if (!isNaN(Number(processedAcademicYear))) {
-      processedAcademicYear = parseInt(processedAcademicYear, 10); // ✅ 확실한 숫자로 변환
-    } else {
-      console.warn("❌ 유효하지 않은 학년 값:", processedAcademicYear);
-      processedAcademicYear = null; // ✅ 예외 처리
-    }
+  const formData = new FormData();
+  formData.append("title", noticeData.value.title);
+  formData.append("content", noticeData.value.content);
+  
+  // ✅ academic_year 값 변환 (전체일 경우 null)
+  const academicYear = noticeData.value.academic_year === "전체" ? null : noticeData.value.academic_year;
+  formData.append("academic_year", academicYear);
 
-    // ✅ 최종 데이터 구성
-    const processedData = {
-      ...noticeData.value,
-      academic_year: processedAcademicYear, // ✅ 변환된 학년 값 적용
-    };
+  formData.append("subject_id", noticeData.value.subject_id || null);
+  formData.append("is_pinned", noticeData.value.is_pinned ? "1" : "0");
 
-    console.log("🚀 공지사항 저장 요청 데이터:", processedData);
-    return await makeAuthorizedRequest(url, isEdit ? "put" : "post", processedData);
+  if (noticeData.value.file) {
+    formData.append("file", noticeData.value.file);
   }
+
+  const userName = localStorage.getItem("userName") || "관리자";
+  formData.append("author", userName);
+
+  console.log("🚀 전송할 FormData:", [...formData.entries()]);
+
+  try {
+    const response = await fetch(url, {
+      method: isEdit ? "PUT" : "POST",
+      body: formData,
+    });
+
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.message);
+    return true;
+  } catch (error) {
+    console.error("❌ 공지사항 업로드 실패:", error);
+    return false;
+  }
+}
 
   return { noticeData, handleFileUpload, submitNotice };
 }

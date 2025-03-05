@@ -5,12 +5,17 @@
       <h3>{{ notice.title || "제목 없음" }}</h3>
       <p>{{ notice.content || "내용 없음" }}</p>
       <p><strong>학년:</strong> {{ notice.academic_year ? `${notice.academic_year}학년` : "전체" }}</p>
-      <p><strong>과목:</strong> {{ getSubjectName(notice.subject_id) }}</p>
+      <p v-if="notice.academic_year !== '전체' && notice.subject_id"><strong>과목:</strong> {{ getSubjectName(notice.subject_id) }}</p>
       <p><strong>작성일:</strong> {{ formattedDate }}</p>
+      <p><strong>조회수:</strong> {{ notice.views || 0 }}</p>
 
       <div v-if="notice.file_path">
-        <a :href="`http://localhost:5000/${notice.file_path}`" download>📂 파일 다운로드</a>
-      </div>
+      <p><strong>첨부파일:</strong></p>
+      <button @click="downloadFile">
+        📂 {{ getFileName(notice.file_path) }}
+      </button>
+    </div>
+
 
       <div v-if="isAdmin">
         <button @click="editNotice">✏️ 수정</button>
@@ -96,6 +101,23 @@ export default {
       router.push(`/notices/edit/${noticeId}`);
     };
 
+    // ✅ 파일 이름 추출 함수 추가
+    const getFileName = (filePath) => {
+      if (!filePath) return "파일 없음";
+      return filePath.split("/").pop(); // 파일 경로에서 파일명만 추출
+    };
+
+    const downloadFile = () => {
+    const fileUrl = `http://localhost:5000/${notice.value.file_path}`;
+    const link = document.createElement("a");
+    link.href = fileUrl;
+    link.setAttribute("download", getFileName(notice.value.file_path)); // ✅ 다운로드 속성 추가
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+
     return {
       notice,
       formattedDate,
@@ -104,6 +126,8 @@ export default {
       getSubjectName,
       deleteNotice: deleteNoticeHandler,
       editNotice,
+      getFileName,
+      downloadFile,
     };
   },
 };
