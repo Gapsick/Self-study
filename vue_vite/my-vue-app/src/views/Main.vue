@@ -18,6 +18,9 @@
     <button @click="goToNotices">📢 공지사항 보기</button>
 
     <br /><br />
+    <button @click="goToSchedule">📅 시간표 보기</button>
+
+    <br /><br />
     <button @click="logout">로그아웃</button>
 
     <br /><br />
@@ -74,6 +77,9 @@ export default {
     goToNotices() {
       this.router.push("/notices");
     }, 
+    goToSchedule() {
+      this.router.push("/timetable");
+    },
     logout() {
       localStorage.removeItem("jwtToken");
       localStorage.removeItem("token");

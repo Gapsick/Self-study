@@ -8,6 +8,8 @@ const userRoutes = require("./routes/userRoutes");
 const adminRoutes = require("./routes/adminRoutes");
 const noticeRoutes = require("./routes/noticeRoutes");
 const subjectRoutes = require("./routes/subjectRoutes");
+const timetableRoutes = require("./routes/timetable");
+
 
 const app = express();
 
@@ -49,6 +51,8 @@ app.use("/api/user", userRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/notices", noticeRoutes);
 app.use("/api/subjects", subjectRoutes);
+app.use("/api", timetableRoutes);
+
 
 // ✅ 서버 실행
 const PORT = process.env.PORT || 5000;
