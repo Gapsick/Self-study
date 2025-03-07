@@ -2,30 +2,50 @@ const express = require("express");
 const router = express.Router();
 const db = require("../config/db"); // MySQL 연결 파일
 
-// 📌 1️⃣ 특정 학년의 시간표 조회 (GET)
-router.get("/timetable/:grade", async (req, res) => {
-  try {
-    const grade = req.params.grade;
-    const query = `
-      SELECT t.id, s.name AS subject_name, t.day, t.period, t.professor, t.classroom
-      FROM timetable t
-      JOIN subjects s ON t.subject_id = s.id
-      WHERE s.academic_year = ?
-      ORDER BY FIELD(t.day, 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'), t.period;
-    `;
-    const [rows] = await db.promise().query(query, [grade]);
+router.get("/timetable", async (req, res) => {
+    try {
+        const { start, end, academic_year } = req.query;
+        console.log(`📅 주간 시간표 조회 요청: ${start} ~ ${end} (학년: ${academic_year})`);
 
-    // ✅ 데이터가 없을 경우 404 응답
-    if (rows.length === 0) {
-      return res.status(404).json({ error: `❌ ${grade}학년 시간표가 없습니다.` });
+        if (!start || !end || !academic_year) {
+            return res.status(400).json({ error: "❌ 요청에 start, end, academic_year 값이 필요합니다." });
+        }
+
+        // ✅ 주간 시간표 조회
+        const timetableQuery = `
+        SELECT t.id, t.day, t.lecture_period, t.period, t.professor, t.classroom, 
+               s.name AS subject_name, t.subject_id
+        FROM timetable t
+        JOIN subjects s ON t.subject_id = s.id
+        WHERE t.start_date <= ? 
+        AND t.end_date >= ? 
+        AND t.period = ? 
+        ORDER BY FIELD(t.day, 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'), t.lecture_period;
+        `;    
+        const [timetableRows] = await db.promise().query(timetableQuery, [end, start, academic_year]);
+
+        // ✅ 해당 주간의 휴강 데이터 조회 (holiday_date 변환)
+        const holidayQuery = `
+            SELECT DATE_FORMAT(holiday_date, '%Y-%m-%d') AS holiday_date, day, subject_id 
+            FROM holidays
+            WHERE holiday_date BETWEEN ? AND ?;
+        `;
+        const [holidayRows] = await db.promise().query(holidayQuery, [start, end]);
+
+        console.log("📌 시간표 데이터:", timetableRows);
+        console.log("📌 휴강 데이터:", holidayRows);
+
+        res.json({ timetable: timetableRows, holidays: holidayRows });
+    } catch (error) {
+        console.error("❌ 주간 시간표 조회 오류:", error);
+        res.status(500).json({ error: "주간 시간표 조회 중 오류 발생" });
     }
-
-    res.json(rows);
-  } catch (error) {
-    console.error("❌ 시간표 조회 오류:", error);
-    res.status(500).json({ error: "시간표 조회 중 오류 발생" });
-  }
 });
+
+
+
+
+
 
 // 📌 2️⃣ 새로운 시간표 추가 (POST)
 router.post("/timetable", async (req, res) => {
