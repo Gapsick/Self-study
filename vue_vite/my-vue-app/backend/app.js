@@ -52,6 +52,7 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/notices", noticeRoutes);
 app.use("/api/subjects", subjectRoutes);
 app.use("/api", timetableRoutes);
+app.use("/api/timetable", timetableRoutes);
 
 
 // ✅ 서버 실행
