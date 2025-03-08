@@ -44,7 +44,7 @@ router.get("/timetable", async (req, res) => {
         console.error("❌ 주간 시간표 조회 오류:", error);
         res.status(500).json({ error: "주간 시간표 조회 중 오류 발생" });
     }
-});
+    });
 
 
 router.get("/subjects", async (req, res) => {
@@ -171,12 +171,5 @@ router.post("/holidays", async (req, res) => {
         res.status(500).json({ error: "휴강 등록 중 오류 발생" });
     }
 });
-
-
-
-
-
-
-
 
 module.exports = router;

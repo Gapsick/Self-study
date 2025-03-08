@@ -38,9 +38,11 @@
   
         if (event.data.token) {
         console.log("📢 (login.vue) 저장할 Access Token:", event.data.token);
+        console.log("📢 (login.vue) 저장할 Google Access Token:", event.data.googleAccessToken || "없음");
         console.log("📢 (login.vue) 저장할 Refresh Token:", event.data.refreshToken || "없음");  // ✅ 디버깅용 콘솔 추가
 
         localStorage.setItem("token", event.data.token);
+        localStorage.setItem("googleAccessToken", event.data.googleAccessToken || ""); // ✅ Google Access Token 저장
         localStorage.setItem("refreshToken", event.data.refreshToken || ""); // ✅ Refresh Token 저장
         localStorage.setItem("userEmail", event.data.email);
         localStorage.setItem("role", event.data.role);

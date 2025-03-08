@@ -27,30 +27,35 @@
           </div>
         </div>
   
-        <!-- 우측 달력 -->
-        <div class="calendar-container">
-          <h2>📆 달력</h2>
-          <div class="calendar">
-            <!-- 한 달 날짜 반복 -->
-            <div
-              v-for="day in days"
-              :key="day"
-              class="calendar-day"
-              @click="scrollToEvent(day)"
-            >
-              <span>{{ day }}</span>
-              <!-- 해당 날짜에 이벤트가 있으면 색상 선을 세로로 표시 -->
-              <div v-if="eventsByDate[getFormattedDate(day)]" class="event-box">
-                <div
-                  v-for="(event, index) in eventsByDate[getFormattedDate(day)]"
-                  :key="index"
-                  class="event-line"
-                  :style="{ backgroundColor: getEventColor(index) }"
-                ></div>
-              </div>
-            </div>
-          </div>
-        </div>
+<!-- ✅ 달력 안에 이동 바 배치 -->
+<div class="calendar-container">
+  <!-- ✅ 이동 바를 달력 위에 배치 -->
+  <div class="month-header">
+    <button @click="prevMonth" class="month-button">◀</button>
+    <h2>{{ currentYear }}년 {{ currentMonth }}월</h2>
+    <button @click="nextMonth" class="month-button">▶</button>
+  </div>
+
+  <h2>📆 달력</h2>
+  <div class="calendar">
+    <div
+      v-for="day in days"
+      :key="day"
+      class="calendar-day"
+      @click="scrollToEvent(day)"
+    >
+      <span>{{ day }}</span>
+      <div v-if="eventsByDate[getFormattedDate(day)]" class="event-box">
+        <div
+          v-for="(event, index) in eventsByDate[getFormattedDate(day)]"
+          :key="index"
+          class="event-line"
+          :style="{ backgroundColor: getEventColor(index) }"
+        ></div>
+      </div>
+    </div>
+  </div>
+</div>
       </div>
   
       <!-- 일정 상세 모달 -->
@@ -115,6 +120,8 @@
             `https://www.googleapis.com/calendar/v3/calendars/${this.calendarId}/events?timeMin=${timeMin}&timeMax=${timeMax}`,
             { headers: { Authorization: `Bearer ${accessToken}` } }
           );
+
+          console.log("📢 (fetchGoogleCalendarEvents) Google API 응답:", response.data); // ✅ API 응답 확인
   
           this.events = response.data.items.map(event => ({
             id: event.id,

@@ -9,9 +9,30 @@ const { GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, REDIRECT_URI, JWT_SECRET } = pro
  * 🔹 1️⃣ Google 로그인 URL 요청
  */
 const getGoogleAuthUrl = (req, res) => {
-  const authUrl = `https://accounts.google.com/o/oauth2/auth?client_id=${GOOGLE_CLIENT_ID}&redirect_uri=${REDIRECT_URI}&scope=openid%20email%20profile&response_type=code&access_type=offline&prompt=consent`;
+  const baseUrl = "https://accounts.google.com/o/oauth2/auth";
+  
+  const options = {
+    client_id: GOOGLE_CLIENT_ID,
+    redirect_uri: REDIRECT_URI,
+    response_type: "code",
+    access_type: "offline",
+    prompt: "consent",
+    scope: [
+      "openid",
+      "email",
+      "profile",
+      "https://www.googleapis.com/auth/calendar.readonly" // ✅ Google Calendar API 권한 추가
+    ].join(" "), // ✅ scope를 문자열로 결합
+  };
+
+  // URL 인코딩을 적용하여 쿼리 문자열을 생성
+  const authUrl = `${baseUrl}?${new URLSearchParams(options).toString()}`;
+
+  console.log("✅ (getGoogleAuthUrl) 생성된 OAuth URL:", authUrl); // ✅ 디버깅용 로그 추가
+
   return res.json({ authUrl });
 };
+
 
 /**
  * 🔹 2️⃣ Google OAuth 콜백 (인가 코드 받아서 사용자 정보 조회 후 응답)
@@ -147,11 +168,13 @@ const googleCallback = async (req, res) => {
 
         console.log("✅ (googleCallback) 로그인 성공! JWT 발급 완료:", jwtToken);
         console.log("📢 (googleCallback) 클라이언트로 보낼 Refresh Token:", refresh_token || "없음");
+        console.log("📢 (googleCallback) 클라이언트로 보낼 Google Access Token:", access_token);
 
         return res.send(`
           <script>
             window.opener.postMessage({ 
               token: "${jwtToken}", 
+              googleAccessToken: "${access_token}",  // ✅ Google Access Token 추가
               refreshToken: "${refresh_token || ""}", 
               email: "${user.email}",  // ✅ 이메일 추가
               role: "${user.role || "student"}"

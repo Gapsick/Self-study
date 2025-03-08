@@ -531,6 +531,7 @@ logDayChange() {
     console.log("📌 변경된 요일 값:", this.form.day);
   }
   },
+  
 };
 </script>
 
