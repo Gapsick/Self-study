@@ -19,10 +19,13 @@ export const fetchSubjectsByYear = async (academicYear) => {
     if (academicYear === "전체") {
       return await fetchSubjects(); // 전체 과목 반환
     }
-    const response = await axios.get(`${API_BASE_URL}/subjects/${academicYear}`);
+    const response = await axios.get(`${API_BASE_URL}/subjects`, {
+      params: { academic_year: academicYear } // ✅ 쿼리 파라미터로 요청!
+    });
     return response.data;
   } catch (error) {
     console.error(`🚨 ${academicYear}학년 과목 목록 조회 실패:`, error);
     return [];
   }
 };
+
