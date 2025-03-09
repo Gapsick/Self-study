@@ -10,7 +10,7 @@ import NoticeDetail from "@/views/NoticeDetail.vue";
 import NoticeWrite from "@/views/NoticeWrite.vue"; // ✅ 작성 페이지
 import NoticeEdit from "@/views/NoticeEdit.vue"; // ✅ 수정 페이지
 
-import Timetable from "@/views/timetable.vue";
+import Timetable from "@/views/Timetable.vue";
 
 const routes = [
   { path: "/", component: Login },

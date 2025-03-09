@@ -88,10 +88,18 @@ const goToAdminPage = () => navigateWithAuth("/admin");
 
 // ✅ 로그아웃 함수
 const logout = () => {
-  ["jwtToken", "token", "refreshToken", "userInfo", "googleAccessToken", "role", "userName"].forEach((key) =>
-    localStorage.removeItem(key)
-  );
+  [
+    "jwtToken",
+    "token",
+    "refreshToken",
+    "userInfo",
+    "googleAccessToken",
+    "role",
+    "userName",
+    "grade" // ✅ grade 값 추가
+  ].forEach((key) => localStorage.removeItem(key));
 
-  router.push("/login");
+  router.push("/login"); // ✅ 로그아웃 후 로그인 페이지로 이동
 };
+
 </script>
