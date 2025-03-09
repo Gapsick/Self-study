@@ -43,6 +43,10 @@ function saveUserData(data) {
   localStorage.setItem("userEmail", data.email);
   localStorage.setItem("role", data.role);
   localStorage.setItem("userName", data.name);
+
+  if (data.role === "student" && data.grade) {
+    localStorage.setItem("grade", data.grade); // ✅ 학생일 때만 grade 저장
+  }
 }
 
 // ✅ Google 로그인 팝업 열기

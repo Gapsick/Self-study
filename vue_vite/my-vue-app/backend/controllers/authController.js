@@ -177,7 +177,8 @@ const googleCallback = async (req, res) => {
               googleAccessToken: "${access_token}",  // ✅ Google Access Token 추가
               refreshToken: "${refresh_token || ""}", 
               email: "${user.email}",  // ✅ 이메일 추가
-              role: "${user.role || "student"}"
+              role: "${user.role || "student"}",
+              grade: "${user.grade || ""}"  // ✅ 학년 추가
             }, "http://localhost:5173");
             window.close();
           </script>
