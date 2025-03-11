@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>v-for Object 예제</title>
+  <script src="https://unpkg.com/vue@3"></script>
+</head>
+<body>
+  <div id="app2">
+    <h2>✅ 회원 정보 (Object)</h2>
+    <table border="1">
+      <thead>
+        <tr>
+          <th>속성명</th>
+          <th>값</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr v-for="(value, key, index) in user" :key="index">
+          <td>{{ key }}</td>
+          <td>{{ value }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <script>
+    Vue.createApp({
+      data() {
+        return {
+          user: {
+            name: "강감찬",
+            age: 40,
+            job: "장군",
+            active: true
+          }
+        };
+      }
+    }).mount("#app2");
+  </script>
+</body>
+</html>

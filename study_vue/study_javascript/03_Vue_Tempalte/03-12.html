@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>v-for List 예제</title>
+  <script src="https://unpkg.com/vue@3"></script>
+</head>
+<body>
+  <div id="app">
+    <h2>✅ 학생 목록 (List)</h2>
+    <table border="1">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>이름</th>
+          <th>나이</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr v-for="(student, index) in studentList" :key="index">
+          <td>{{ index + 1 }}</td>
+          <td>{{ student.name }}</td>
+          <td>{{ student.age }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <script>
+    Vue.createApp({
+      data() {
+        return {
+          studentList: [
+            { name: "홍길동", age: 20 },
+            { name: "이몽룡", age: 22 },
+            { name: "성춘향", age: 19 }
+          ]
+        };
+      }
+    }).mount("#app");
+  </script>
+</body>
+</html>
