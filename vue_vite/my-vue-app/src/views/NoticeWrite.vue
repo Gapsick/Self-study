@@ -25,16 +25,16 @@
       </div>
 
       <!-- 🔹 과목 선택 (학년이 '전체'가 아닐 때만 표시) -->
-      <div v-if="selectedYear !== '전체' && subjects.value.length > 0">
-        <label>과목</label>
-        <select v-model="noticeData.subject_id" :key="selectedYear">
-          <option value="">과목 선택</option> <!-- ✅ 기본값 추가 -->
-          <option v-for="subject in subjects.value" :key="subject.id" :value="subject.id">
-            {{ subject.name }}
-          </option>
-        </select>
-      </div>
-
+<!-- ✅ 조건문에서 .value 제거 -->
+<div v-if="selectedYear !== '전체' && subjects.length > 0">
+  <label>과목</label>
+  <select v-model="noticeData.subject_id" :key="selectedYear">
+    <option value="">과목 선택</option>
+    <option v-for="subject in subjects" :key="subject.id" :value="subject.id">
+      {{ subject.name }}
+    </option>
+  </select>
+</div>
       <div>
         <label>파일 첨부</label>
         <input type="file" @change="handleFileUpload" />

@@ -48,7 +48,7 @@ export function useNoticeForm(initialData = {}) {
     } else {
       // ✅ null 값 필터링하여 전송
       requestData = Object.fromEntries(
-        Object.entries({ ...data }).filter(([_, v]) => v !== null && v !== undefined && v !== "")
+        Object.entries({ ...data }).filter(([_, v]) => v !== null && v !== undefined && v !== "") 
       );
       headers["Content-Type"] = "application/json";
     }
