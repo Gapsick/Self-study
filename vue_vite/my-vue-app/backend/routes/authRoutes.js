@@ -4,6 +4,7 @@ const axios = require("axios");
 const jwt = require("jsonwebtoken");
 const db = require("../config/db");
 const authController = require("../controllers/authController");
+const { registerUser } = require("../controllers/userController")
 require("dotenv").config();
 
 const { GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, JWT_SECRET } = process.env;
@@ -14,6 +15,12 @@ const { GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, JWT_SECRET } = process.env;
 router.get("/google/url", authController.getGoogleAuthUrl);
 router.post("/google", authController.googleCallback);
 router.get("/google/callback", authController.googleCallback);
+
+/**
+ * 회원가입 경로
+ */
+
+router.post("/register", registerUser)
 
 /**
  * 🔹 1️⃣ Refresh Token을 사용하여 새로운 JWT Access Token 발급
@@ -52,19 +59,20 @@ router.post("/refresh-token", async (req, res) => {
 });
 
 /**
- * 🔹 (도우미 함수) DB에서 Refresh Token 조회
+ * 🔹DB에서 Refresh Token 조회
  */
-function getRefreshToken(email) {
-    return new Promise((resolve, reject) => {
-        db.query("SELECT refresh_token FROM users WHERE email = ?", [email], (err, results) => {
-            if (err || results.length === 0) return reject("유효하지 않은 사용자 또는 Refresh Token 없음");
-            resolve(results[0].refresh_token);
-        });
-    });
-}
+async function getRefreshToken(email) {
+    const [results] = await db.promise().query(
+      "SELECT refresh_token FROM users WHERE email = ?",
+      [email]
+    );
+    if (results.length === 0) throw new Error("Refresh Token 없음");
+    return results[0].refresh_token;
+  }
+  
 
 /**
- * 🔹 (도우미 함수) Google OAuth를 통해 새로운 Access Token 요청
+ * 🔹 Google OAuth를 통해 새로운 Access Token 요청
  */
 function getNewAccessToken(refreshToken) {
     return axios
