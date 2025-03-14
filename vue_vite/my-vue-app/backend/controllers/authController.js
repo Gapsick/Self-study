@@ -85,61 +85,33 @@ const googleCallback = async (req, res) => {
     }
 
     // ✅ DB에서 사용자 확인
-    db.query("SELECT * FROM users WHERE email = ?", [userInfo.email], (err, results) => {
-      if (err) {
-        console.error("❌ DB 조회 오류:", err);
-        return res.status(500).json({ message: "❌ 서버 오류 발생", error: err });
-      }
+    const [results] = await db.promise().query("SELECT * FROM users WHERE email = ?", [userInfo.email]);
 
       let user = results[0];
 
-      if (!user) {
-        console.log("🚀 신규 사용자 회원가입 진행!");
-        console.log("📢 (googleCallback) 신규 사용자의 Refresh Token:", refresh_token || "없음");
-
-        // ✅ 신규 회원 추가 후 다시 조회
-        db.query(
-          "INSERT INTO users (email, name, role, refresh_token) VALUES (?, ?, ?, ?)",
-          [userInfo.email, userInfo.name, "student", refresh_token || null],
-          (insertErr, insertResult) => {
-            if (insertErr) {
-              console.error("❌ 사용자 저장 오류:", insertErr);
-              return res.status(500).json({ message: "사용자 저장 오류" });
-            }
-
-            console.log("✅ (googleCallback) 신규 사용자 저장 완료!");
-
-            // ✅ 새로 추가된 유저 정보 다시 조회
-            db.query("SELECT * FROM users WHERE email = ?", [userInfo.email], (reFetchErr, newResults) => {
-              if (reFetchErr) {
-                console.error("❌ 사용자 재조회 오류:", reFetchErr);
-                return res.status(500).json({ message: "사용자 정보 재조회 오류" });
-              }
-
-              user = newResults[0];
-              proceedWithLogin(user);
-            });
-          }
-        );
-      } else {
+      if (results.length === 0) {
+        console.log("🚀 신규 사용자 → 회원가입 유도 메시지 전송");
+        return res.send(`
+          <script>
+            window.opener.postMessage({
+              needRegister: true,
+              email: "${userInfo.email}"
+            }, "http://localhost:5173");
+            window.close();
+          </script>
+        `);
+      }
+      
         console.log("✅ 기존 사용자 로그인!");
-        console.log("📢 (googleCallback) 기존 사용자의 Refresh Token:", refresh_token || user.refresh_token);
 
         // ✅ 기존 사용자라면 Refresh Token 업데이트
-        db.query(
+        await db.promise().query(
           "UPDATE users SET refresh_token = ? WHERE email = ?",
-          [refresh_token || user.refresh_token, user.email],
-          (updateErr) => {
-            if (updateErr) {
-              console.error("❌ Refresh Token 업데이트 오류:", updateErr);
-            } else {
-              console.log("✅ (googleCallback) Refresh Token 업데이트 성공!");
-            }
-          }
+          [refresh_token || user.refresh_token, user.email]
         );
+        console.log("✅ Refresh Token 업데이트 완료");
 
         proceedWithLogin(user);
-      }
 
       function proceedWithLogin(user) {
         // ✅ 승인 대기 상태 확인
@@ -184,7 +156,6 @@ const googleCallback = async (req, res) => {
           </script>
         `);
       }
-    });
   } catch (error) {
     console.error("❌ Google OAuth 처리 중 오류 발생:", error.message);
     return res.status(500).json({ message: "Google 로그인 실패", error: error.message });
