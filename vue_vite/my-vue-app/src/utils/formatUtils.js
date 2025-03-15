@@ -1,5 +1,3 @@
-export function formatDate(dateString) {
-    const date = new Date(dateString);
-    return `${date.getFullYear()}. ${date.getMonth() + 1}. ${date.getDate()}`;
-  }
-  
+export function formatDate(dateStr) {
+  return new Date(dateStr).toISOString().split("T")[0]
+}

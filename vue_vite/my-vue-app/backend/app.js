@@ -9,6 +9,7 @@ const adminRoutes = require("./routes/adminRoutes");
 const noticeRoutes = require("./routes/noticeRoutes");
 const subjectRoutes = require("./routes/subjectRoutes");
 const timetableRoutes = require("./routes/timetable");
+const holidayRoutes = require("./routes/holidays");
 
 
 const app = express();
@@ -51,8 +52,8 @@ app.use("/api/user", userRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/notices", noticeRoutes);
 app.use("/api/subjects", subjectRoutes);
-app.use("/api", timetableRoutes);
 app.use("/api/timetable", timetableRoutes);
+app.use("/api/holidays", holidayRoutes);
 
 
 // ✅ 서버 실행

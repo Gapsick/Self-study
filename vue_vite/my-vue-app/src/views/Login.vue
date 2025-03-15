@@ -70,3 +70,6 @@ async function openGooglePopup() {
     <button @click="openGooglePopup">Google 로그인 (팝업)</button>
   </div>
 </template>
+
+
+
