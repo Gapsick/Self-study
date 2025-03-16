@@ -29,6 +29,7 @@
 
             <label v-else>
             시작일: <input type="date" v-model="form.start_date" />
+            <br>
             종료일: <input type="date" v-model="form.end_date" />
             </label>
 
@@ -93,7 +94,8 @@
 
   return result.toISOString().split('T')[0]
 }
-  
+  const oldStatus = ref('');
+
   onMounted(() => {
     console.log("📅 props.date 확인:", props.date)
   
@@ -105,6 +107,9 @@
     form.holiday_date = getDateOfDayInSameWeek(props.date, form.day)
 
     console.log("🎯 세팅된 holiday_date:", form.holiday_date)
+
+    oldStatus.value = form.status
+
   })
   
   // 학년별 과목 로딩
