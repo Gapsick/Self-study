@@ -117,44 +117,63 @@
   const { subjects } = useSubjects(selectedYear)
   
   const save = async () => {
-    const subject = subjects.value.find(s => s.name === form.subject_name)
-    if (!subject) {
-      alert('유효한 과목을 선택해주세요.')
-      return
-    }
-  
-    try {
-      if (form.status === '휴강') {
-        await axios.post('http://localhost:5000/api/holidays', {
-          holiday_date: form.holiday_date,
+  const subject = subjects.value.find(s => s.name === form.subject_name)
+  if (!subject) {
+    alert('유효한 과목을 선택해주세요.')
+    return
+  }
+
+  try {
+    // ✅ [1] 휴강 → 수업 있음 으로 전환된 경우: 기존 휴강 삭제
+    if (oldStatus.value === '휴강' && form.status === '수업 있음') {
+      await axios.delete(`http://localhost:5000/api/holidays`, {
+        data: {
           subject_id: subject.id,
+          holiday_date: form.holiday_date,
           day: form.day,
           lecture_period: form.lecture_period,
-          period: props.grade,
-        })
-        alert("✅ 휴강이 등록되었습니다.")
-      } else {
-        const payload = {
-          ...form,
-          subject_id: subject.id,
           period: props.grade
         }
-  
-        if (form.id) {
-          await axios.put(`http://localhost:5000/api/timetable/${form.id}`, payload)
-        } else {
-          await axios.post(`http://localhost:5000/api/timetable`, payload)
-        }
-        alert("✅ 시간표가 저장되었습니다.")
-      }
-  
-      emit('saved')
-      emit('close')
-    } catch (err) {
-      alert("❌ 저장에 실패했습니다.")
-      console.error(err)
+      })
+      console.log("🚫 기존 휴강 삭제 완료")
     }
+
+    // ✅ [2] 현재 상태가 "휴강"인 경우 → 휴강 등록
+    if (form.status === '휴강') {
+      await axios.post('http://localhost:5000/api/holidays', {
+        holiday_date: form.holiday_date,
+        subject_id: subject.id,
+        day: form.day,
+        lecture_period: form.lecture_period,
+        period: props.grade,
+      })
+      alert("✅ 휴강이 등록되었습니다.")
+    } 
+    // ✅ [3] 현재 상태가 "수업 있음"인 경우 → 시간표 저장
+    else {
+      const payload = {
+        ...form,
+        subject_id: subject.id,
+        period: props.grade
+      }
+
+      if (form.id) {
+        await axios.put(`http://localhost:5000/api/timetable/${form.id}`, payload)
+      } else {
+        await axios.post(`http://localhost:5000/api/timetable`, payload)
+      }
+
+      alert("✅ 시간표가 저장되었습니다.")
+    }
+
+    emit('saved')
+    emit('close')
+  } catch (err) {
+    alert("❌ 저장에 실패했습니다.")
+    console.error(err)
   }
+}
+
   
   const remove = async () => {
     try {
