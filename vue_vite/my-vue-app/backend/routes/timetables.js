@@ -10,7 +10,7 @@ router.get("/timetable", async (req, res) => {
             return res.status(400).json({ error: "❌ start, end, academic_year 값이 필요합니다." });
         }
 
-        // ✅ 학년 기준으로 timetable 조회
+
         // ✅ 학년 기준으로 timetable 조회
         const timetableQuery = `
             SELECT t.id, t.day, t.lecture_period, t.period, t.professor, t.classroom, 

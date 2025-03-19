@@ -1,4 +1,5 @@
 <template>
+  <br><br><br><br><br><br><br>
   <div class="admin-container">
     <h2>회원 승인 관리</h2>
 

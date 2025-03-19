@@ -58,4 +58,96 @@ const rejectUser = async (req, res) => {
   }
 };
 
-module.exports = { getPendingUsers, approveUser, rejectUser };
+// ✅ 과목 목록 조회
+const getSubjects = async (req, res) => {
+  try {
+    const [rows] = await db.promise().query("SELECT * FROM subjects");
+    res.json(rows); 
+  } catch (err) {
+    console.error("❌ 과목 목록 조회 실패:", err);
+    res.status(500).json({ message: "❌ 과목 목록 조회 실패", error: err });
+  }
+};
+
+// ✅ 과목 추가
+const createSubject = async (req, res) => {
+  const { name, academic_year } = req.body;
+  if (!name || !academic_year) {
+    return res.status(400).json({ message: "❌ 과목명과 학년을 입력해주세요." });
+  }
+
+  try {
+    await db.promise().query(
+      "INSERT INTO subjects (name, academic_year) VALUES (?, ?)",
+      [name, academic_year]
+    );
+    res.json({ success: true, message: "✅ 과목이 추가되었습니다." });
+  } catch (err) {
+    console.error("❌ 과목 추가 실패:", err);
+    res.status(500).json({ message: "❌ 과목 추가 실패", error: err });
+  }
+};
+
+// ✅ 과목 수정
+const updateSubject = async (req, res) => {
+  const { id } = req.params;
+  const { name, academic_year } = req.body;
+
+  if (!name || !academic_year) {
+    return res.status(400).json({ message: "❌ 과목명과 학년을 입력해주세요." });
+  }
+
+  try {
+    const [result] = await db.promise().query(
+      "UPDATE subjects SET name=?, academic_year=? WHERE id=?",
+      [name, academic_year, id]
+    );
+    
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "❌ 해당 과목을 찾을 수 없습니다." });
+    }
+
+    res.json({ success: true, message: "✅ 과목이 수정되었습니다." });
+  } catch (err) {
+    console.error("❌ 과목 수정 실패:", err);
+    res.status(500).json({ message: "❌ 과목 수정 실패", error: err });
+  }
+};
+
+// ✅ 과목 삭제
+const deleteSubject = async (req, res) => {
+  const { id } = req.params;
+  
+  try {
+    const [result] = await db.promise().query(
+      "DELETE FROM subjects WHERE id=?",
+      [id]
+    );
+    
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "❌ 해당 과목을 찾을 수 없습니다." });
+    }
+
+    res.json({ success: true, message: "✅ 과목이 삭제되었습니다." });
+  } catch (err) {
+    console.error("❌ 과목 삭제 실패:", err);
+    res.status(500).json({ message: "❌ 과목 삭제 실패", error: err });
+  }
+};
+
+
+
+module.exports = { 
+  
+  // 사용자 승인 관련
+  getPendingUsers, 
+  approveUser, 
+  rejectUser,
+
+  // 과목 관련
+  getSubjects,
+  createSubject,
+  updateSubject,
+  deleteSubject
+
+ };

@@ -13,93 +13,66 @@
 
     <br /><br />
     <button @click="goToSchedule">📅 일정 페이지로 이동</button>
-
     <br /><br />
     <button @click="goToNotices">📢 공지사항 보기</button>
-
     <br /><br />
     <button @click="goToTimetable">📅 시간표 보기</button>
-
     <br /><br />
     <button @click="logout">로그아웃</button>
-
     <br /><br />
     <button v-if="isAdmin" @click="goToAdminPage">회원 승인 관리</button>
   </div>
 </template>
 
+
 <script setup>
-import { ref, onMounted } from "vue";
-import { useRouter } from "vue-router";
+import { useRouter } from "vue-router"
+import { useAuthStore } from "@/stores/useAuthStore"
+import { ref, computed, onMounted } from "vue"
 
-const router = useRouter();
+const router = useRouter()
+const auth = useAuthStore()
 
-// ✅ 반응형 변수 선언
-const userName = ref("");
-const userRole = ref("");
-const isAdmin = ref(false);
-const isAuthenticated = ref(false);
-const calendarURL = ref("");
+// ✅ 반응형 computed
+const userRole = computed(() => auth.userRole)
+const isAdmin = computed(() => auth.isAdmin)
+const isAuthenticated = computed(() => auth.isAuthenticated)
 
-// ✅ localStorage에서 로그인 정보 가져오기
+const calendarURL = ref("https://calendar.google.com/calendar/embed?src=primary&ctz=Asia%2FSeoul")
+
+// ✅ 권한 체크
 onMounted(() => {
-  const token = localStorage.getItem("token");
-  const roleFromStorage = localStorage.getItem("role");
+  auth.checkAuth()
 
-  console.log("🛠️ localStorage에서 가져온 role:", roleFromStorage);
+  console.log("✅ token:", auth.token);
+  console.log("✅ userRole:", auth.userRole);
+  console.log("✅ isAdmin:", auth.isAdmin);
+  console.log("✅ isAuthenticated:", auth.isAuthenticated);
 
-  if (roleFromStorage) {
-    userRole.value = roleFromStorage;
-    isAdmin.value = roleFromStorage === "admin";
-  } else {
-    userRole.value = "student";
-    isAdmin.value = false;
+  if (!auth.isAuthenticated) {
+    alert("로그인이 필요합니다!")
+    router.push("/login")
   }
+})
 
-  isAuthenticated.value = !!token; // ✅ 토큰이 있으면 로그인 상태
-
-  console.log("🔹 최종 설정된 userRole:", userRole.value);
-  console.log("🔹 최종 설정된 isAdmin:", isAdmin.value);
-
-  if (!isAuthenticated.value) {
-    alert("로그인이 필요합니다!");
-    router.push("/login");
-  }
-
-  // ✅ Google Calendar URL 설정
-  calendarURL.value = `https://calendar.google.com/calendar/embed?src=primary&ctz=Asia%2FSeoul`;
-});
-
-// ✅ 로그인 확인 후 라우팅하는 함수
+// ✅ 라우팅 함수
 const navigateWithAuth = (path) => {
-  if (!isAuthenticated.value) {
-    alert("로그인이 필요합니다!");
-    router.push("/login");
-    return;
+  if (!auth.isAuthenticated) {
+    alert("로그인이 필요합니다!")
+    router.push("/login")
+    return
   }
-  router.push(path);
-};
+  router.push(path)
+}
 
-// ✅ 페이지 이동 함수
-const goToSchedule = () => navigateWithAuth("/schedule");
-const goToNotices = () => navigateWithAuth("/notices");
-const goToTimetable = () => navigateWithAuth("/timetable");
-const goToAdminPage = () => navigateWithAuth("/admin");
+const goToSchedule = () => navigateWithAuth("/schedule")
+const goToNotices = () => navigateWithAuth("/notices")
+const goToTimetable = () => navigateWithAuth("/timetable")
+const goToAdminPage = () => navigateWithAuth("/admin")
 
-// ✅ 로그아웃 함수
 const logout = () => {
-  [
-    "jwtToken",
-    "token",
-    "refreshToken",
-    "userInfo",
-    "googleAccessToken",
-    "role",
-    "userName",
-    "grade" // ✅ grade 값 추가
-  ].forEach((key) => localStorage.removeItem(key));
-
-  router.push("/login"); // ✅ 로그아웃 후 로그인 페이지로 이동
-};
-
+  auth.logout()
+  router.push("/login")
+}
 </script>
+

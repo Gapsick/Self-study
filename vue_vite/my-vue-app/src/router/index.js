@@ -1,16 +1,21 @@
-import { createRouter, createWebHistory } from "vue-router";
-import Login from "@/views/Login.vue";
-import Main from "@/views/Main.vue";
-import Schedule from "@/views/Schedule.vue";
-import Register from "@/views/Register.vue";
-import Admin from "@/views/Admin.vue";
+// router/index.js
+import { createRouter, createWebHistory } from "vue-router"
+import Login from "@/views/Login.vue"
+import Main from "@/views/Main.vue"
+import Schedule from "@/views/Schedule.vue"
+import Register from "@/views/Register.vue"
 
-import NoticeList from "@/views/Notice.vue";
-import NoticeDetail from "@/views/NoticeDetail.vue";
-import NoticeWrite from "@/views/NoticeWrite.vue"; // ✅ 작성 페이지
-import NoticeEdit from "@/views/NoticeEdit.vue"; // ✅ 수정 페이지
+import AdminDashboard from '@/views/admin/AdminDashboard.vue'
+import ManageUsers from '@/views/admin/ManageUsers.vue'
+import ManageSubjects from '@/views/admin/ManageSubjects.vue'
+import ManageTimetable from '@/views/admin/ManageTimetable.vue'
 
-import Timetable from "@/views/Timetable.vue";
+import NoticeList from "@/views/Notice.vue"
+import NoticeDetail from "@/views/NoticeDetail.vue"
+import NoticeWrite from "@/views/NoticeWrite.vue"
+import NoticeEdit from "@/views/NoticeEdit.vue"
+
+import Timetable from "@/views/Timetable.vue"
 
 const routes = [
   { path: "/", component: Login },
@@ -18,17 +23,29 @@ const routes = [
   { path: "/login", component: Login },
   { path: "/schedule", component: Schedule },
   { path: "/register", component: Register },
-  { path: "/admin", component: Admin },
-  { path: "/notices", component: NoticeList }, // 🔹 공지사항 목록
-  { path: "/notices/:id", component: NoticeDetail }, // 🔹 공지사항 상세
-  { path: "/notices/write", component: NoticeWrite }, // ✅ 공지사항 작성
-  { path: "/notices/edit/:id", component: NoticeEdit }, // ✅ 공지사항 수정
-  { path: '/timetable', component: Timetable},
-];
+
+  // 부모 라우트: /admin -> 자식 라우트: /admin/users ...
+  {
+    path: "/admin",
+    component: AdminDashboard,
+    children: [
+      { path: "users", component: ManageUsers },
+      { path: "subjects", component: ManageSubjects },
+      { path: "timetable", component: ManageTimetable },
+    ],
+  },
+
+  { path: "/notices", component: NoticeList },
+  { path: "/notices/:id", component: NoticeDetail },
+  { path: "/notices/write", component: NoticeWrite },
+  { path: "/notices/edit/:id", component: NoticeEdit },
+
+  { path: "/timetable", component: Timetable },
+]
 
 const router = createRouter({
   history: createWebHistory(),
   routes,
-});
+})
 
-export default router;
+export default router

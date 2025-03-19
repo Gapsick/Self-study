@@ -15,6 +15,7 @@ export default defineConfig({
     },
   },
   server: {
+    port: 5173,
     proxy: {
       "/api": { // ✅ '/api'로 시작하는 요청을 자동으로 백엔드(`http://localhost:5000`)로 전달
         target: "http://localhost:5000",

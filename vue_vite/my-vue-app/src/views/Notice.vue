@@ -1,4 +1,5 @@
 <template>
+  <br><br><br><br><br>
   <div>
     <h2>공지사항</h2>
 

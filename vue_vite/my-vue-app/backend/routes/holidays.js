@@ -2,6 +2,15 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
 
+// 휴강 조회
+router.get('/', (req, res) => {
+  const query = 'SELECT * FROM holidays';
+  db.query(query, (err, results) => {
+    if (err) return res.status(500).json({ error: err });
+    res.json(results);
+  });
+});
+
 // ✅ 휴강 추가
 router.post('/', (req, res) => {
     const { holiday_date, subject_id, day, lecture_period, period } = req.body;
@@ -23,7 +32,24 @@ router.post('/', (req, res) => {
     });
   });
   
-  
+  // ✅ 바디로 삭제하는 DELETE 추가
+router.delete('/', (req, res) => {
+  const { holiday_date, subject_id, day, lecture_period, period } = req.body;
+
+  if (!holiday_date || !subject_id || !day || !lecture_period || !period) {
+    return res.status(400).json({ error: '모든 필드를 입력해주세요.' });
+  }
+
+  const query = `
+    DELETE FROM holidays
+    WHERE holiday_date = ? AND subject_id = ? AND day = ? AND lecture_period = ? AND period = ?
+  `;
+
+  db.query(query, [holiday_date, subject_id, day, lecture_period, period], (err, result) => {
+    if (err) return res.status(500).json({ error: err });
+    res.json({ success: true, deleted: result.affectedRows });
+  });
+});
 
 
 // ✅ 휴강 삭제

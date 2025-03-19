@@ -2,6 +2,15 @@ const express = require("express");
 const router = express.Router();
 const db = require("../config/db");  // 📌 MySQL 연결 코드
 
+// ✅ 모든 시간표 목록 조회
+router.get("/", (req, res) => {
+  const query = "SELECT * FROM timetable"; // 또는 JOIN subjects 등 원하는 대로 확장
+  db.query(query, (err, results) => {
+    if (err) return res.status(500).json({ error: err });
+    res.json(results);
+  });
+});
+
 // 📌 3️⃣ 특정 학년 + 특정 날짜 기준 시간표 (휴강 포함)
 router.get('/:academic_year/date/:date', (req, res) => {
     const { academic_year, date } = req.params;

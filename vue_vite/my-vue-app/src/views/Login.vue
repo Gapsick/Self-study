@@ -2,6 +2,10 @@
 import { useRouter } from "vue-router";
 import axios from "axios";
 import { onMounted } from "vue";
+import { useAuthStore } from '@/stores/useAuthStore'
+
+const auth = useAuthStore()
+
 
 const router = useRouter();
 
@@ -37,17 +41,21 @@ function handleMessage(event) {
 
 // ✅ 로컬 스토리지 저장 함수 추가
 function saveUserData(data) {
-  localStorage.setItem("token", data.token);
-  localStorage.setItem("googleAccessToken", data.googleAccessToken || "");
-  localStorage.setItem("refreshToken", data.refreshToken || "");
-  localStorage.setItem("userEmail", data.email);
-  localStorage.setItem("role", data.role);
-  localStorage.setItem("userName", data.name);
-
-  if (data.role === "student" && data.grade) {
-    localStorage.setItem("grade", data.grade); // ✅ 학생일 때만 grade 저장
+  const user = {
+    name: data.name,
+    email: data.email,
+    role: data.role,
+    grade: data.grade || null,
   }
+
+  localStorage.setItem('user', JSON.stringify(user))
+  localStorage.setItem("token", data.token)
+  localStorage.setItem("googleAccessToken", data.googleAccessToken || "")
+  localStorage.setItem("refreshToken", data.refreshToken || "")
+
+  auth.login(data.token, user)  // ✅ Pinia 상태 반영 추가
 }
+
 
 // ✅ Google 로그인 팝업 열기
 async function openGooglePopup() {
@@ -66,8 +74,9 @@ async function openGooglePopup() {
 
 <template>
   <div>
-    <h1>Google 로그인</h1>
-    <button @click="openGooglePopup">Google 로그인 (팝업)</button>
+    <br><br><br>
+    <h1>글시융 Portal</h1>
+    <button @click="openGooglePopup">Google 로그인</button>
   </div>
 </template>
 

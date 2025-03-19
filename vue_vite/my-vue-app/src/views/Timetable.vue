@@ -86,6 +86,12 @@ function changeGrade(newGrade) {
 }
 
 function openModal(day, period) {
+  const user = JSON.parse(localStorage.getItem('user'))
+  
+  if (!user || (user.role !== 'admin' && user.role !== 'professor')) {
+    // 학생이거나, 로그인 정보 없으면 모달 열지 않음
+    return
+  }
   const classes = getClassesByDayPeriod(day, period)  // ✅ 수정!
   selectedClass.value = classes.length > 0 ? classes[0] : {
     day,
