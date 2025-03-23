@@ -1,6 +1,14 @@
 const express = require("express");
 const cors = require("cors");
+const bodyParser = require("body-parser"); // 이거도 필요!
 require("dotenv").config();
+const app = express(); // ✅ 제일 위로 올리기
+
+// 라인 Webhook 먼저 연결
+const webhookRoutes = require('./config/webhook');
+app.use(bodyParser.json());
+app.use('/webhook', webhookRoutes);
+
 
 // ✅ 기존 라우트 유지
 const authRoutes = require("./routes/authRoutes");
@@ -10,9 +18,6 @@ const noticeRoutes = require("./routes/noticeRoutes");
 const subjectRoutes = require("./routes/subjectRoutes");
 const timetableRoutes = require("./routes/timetable");
 const holidayRoutes = require("./routes/holidays");
-
-
-const app = express();
 
 const path = require("path");
 const fs = require("fs");
