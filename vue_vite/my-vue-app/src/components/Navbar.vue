@@ -1,112 +1,94 @@
 <template>
-  <nav class="navbar" v-if="checkedAuth">
-    <div class="navbar-container">
-      <router-link to="/main" class="logo">📌 학과 시스템</router-link>
-
-      <ul class="nav-links">
-        <li><router-link to="/notices">공지사항</router-link></li>
-        <li><router-link to="/schedule">일정 관리</router-link></li>
-        <li v-if="isAdmin"><router-link to="/admin">관리자 페이지</router-link></li>
-      </ul>
-
-      <div class="nav-auth">
-        <button v-if="isAuthenticated" @click="logout">로그아웃</button>
-        <div v-else>
-          <router-link to="/login">로그인</router-link>
-        </div>
+    <header class="nav-bar">
+      <div class="nav-content">
+        <div class="logo">GSC Portal</div>
+  
+        <nav class="nav-menu">
+          <RouterLink to="/main" class="nav-link">메인</RouterLink>
+          <RouterLink to="/notices" class="nav-link">공지</RouterLink>
+          <RouterLink to="/schedule" class="nav-link">일정</RouterLink>
+          <RouterLink to="/timetable" class="nav-link">시간표</RouterLink>
+          <RouterLink v-if="isAdmin" to="/admin" class="nav-link">관리자</RouterLink>
+        </nav>
+  
+        <button class="logout-btn" @click="logout">로그아웃</button>
       </div>
-    </div>
-  </nav>
-</template>
+    </header>
+  </template>
   
-<script setup>
-import { useRouter } from "vue-router"
-import { useAuthStore } from '@/stores/useAuthStore'
-import { ref, onMounted, computed } from 'vue'
-
-const router = useRouter()
-const auth = useAuthStore()
-
-const checkedAuth = ref(false)
-
-const isAdmin = computed(() => auth.isAdmin) // ✅ computed로 감싸기
-const isAuthenticated = computed(() => auth.isAuthenticated)
-
-onMounted(() => {
-  auth.checkAuth()  // 새로고침 시 복원
-
-  console.log("🔍 Pinia userRole:", auth.userRole)
-  console.log("🔍 isAdmin 계산 결과:", isAdmin.value)
-
-  checkedAuth.value = true // ✅ 체크 완료
+  <script setup>
+  import { useRouter } from 'vue-router'
+  import { useAuthStore } from '@/stores/useAuthStore'
+  import { computed } from 'vue'
+  import { RouterLink } from 'vue-router'
   
-})
-
-const logout = () => {
-  auth.logout()
-  router.push("/login")
-}
-</script>
-
+  const router = useRouter()
+  const authStore = useAuthStore()
+  
+  const isAdmin = computed(() => authStore.role === 'admin')
+  
+  function logout() {
+    authStore.logout()
+    router.push('/login')
+  }
+  </script>
+  
   <style scoped>
-  .navbar {
-    background: #4A90E2;
-    color: white;
-    padding: 12px 20px;
+  .nav-bar {
+    position: fixed;
+    top: 0;
+    width: 100%;
+    height: 70px;
+    background-color: #f4faff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+    z-index: 999;
     display: flex;
-    align-items: center;
-    justify-content: space-between;
+    justify-content: center;
   }
   
-  .navbar-container {
-    display: flex;
+  .nav-content {
     width: 100%;
     max-width: 1200px;
-    margin: auto;
+    padding: 0 40px;
+    display: flex;
+    justify-content: space-between;
     align-items: center;
   }
   
   .logo {
-    font-size: 20px;
-    font-weight: bold;
-    color: white;
-    text-decoration: none;
+    font-size: 22px;
+    font-weight: 700;
+    color: #1e3a8a;
   }
   
-  .nav-links {
+  .nav-menu {
     display: flex;
-    gap: 20px;
-    list-style: none;
-    margin-left: 40px;
+    gap: 30px;
   }
   
-  .nav-links a {
-    color: white;
+  .nav-link {
+    font-size: 15px;
+    color: #333;
+    font-weight: 500;
     text-decoration: none;
+    position: relative;
+  }
+  
+  .nav-link.router-link-active {
+    color: #1d4ed8;
     font-weight: bold;
   }
   
-  .nav-links a:hover {
-    text-decoration: underline;
-  }
-  
-  .nav-auth {
-    display: flex;
-    gap: 10px;
-  }
-  
-  button {
-    background: white;
-    color: #4A90E2;
+  .logout-btn {
+    background: none;
     border: none;
-    padding: 8px 12px;
-    border-radius: 5px;
+    color: #1d4ed8;
+    font-size: 14px;
     cursor: pointer;
-    font-weight: bold;
   }
   
-  button:hover {
-    background: #f0f0f0;
+  .logout-btn:hover {
+    text-decoration: underline;
   }
   </style>
   

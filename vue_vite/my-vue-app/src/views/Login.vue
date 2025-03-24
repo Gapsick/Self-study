@@ -73,12 +73,72 @@ async function openGooglePopup() {
 </script>
 
 <template>
-  <div>
-    <br><br><br>
-    <h1>글시융 Portal</h1>
-    <button @click="openGooglePopup">Google 로그인</button>
+  <div class="login-container">
+    <img src="@/assets/uni_logo.svg" alt="로고" class="logo" />
+    <h1 class="title">글시융 포털</h1>
+    <p class="subtitle">글로벌시스템포털에 오신 것을 환영합니다.</p>
+
+    <button class="google-button" @click="openGooglePopup">
+      Google 로그인
+    </button>
+
+    <p class="note">@g.yju.ac.kr 이메일만 사용 가능합니다.</p>
   </div>
 </template>
+
+<style scoped>
+@import url('https://fonts.googleapis.com/css2?family=Nanum+Gothic&display=swap');
+
+.login-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  background-color: #f0f8ff; /* 연한 파랑 */
+  font-family: 'Nanum Gothic', sans-serif;
+  text-align: center;
+}
+
+.logo {
+  width: 90px;
+  margin-bottom: 20px;
+}
+
+.title {
+  font-size: 24px;
+  color: #2c3e50;
+  margin-bottom: 6px;
+}
+
+.subtitle {
+  font-size: 14px;
+  color: #555;
+  margin-bottom: 30px;
+}
+
+.google-button {
+  padding: 10px 20px;
+  border: 1px solid #4285f4;
+  background-color: white;
+  color: #4285f4;
+  border-radius: 6px;
+  font-size: 15px;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.google-button:hover {
+  background-color: #4285f4;
+  color: white;
+}
+
+.note {
+  font-size: 12px;
+  color: #888;
+  margin-top: 20px;
+}
+</style>
 
 
 
