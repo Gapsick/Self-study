@@ -29,14 +29,16 @@
   
 <!-- ✅ 달력 안에 이동 바 배치 -->
 <div class="calendar-container">
-  <!-- ✅ 이동 바를 달력 위에 배치 -->
+  <!-- ✅ 이동 바를 달력 위에 배치 --> 
   <div class="month-header">
     <button @click="prevMonth" class="month-button">◀</button>
     <h2>{{ currentYear }}년 {{ currentMonth }}월</h2>
     <button @click="nextMonth" class="month-button">▶</button>
   </div>
 
-  <h2>📆 달력</h2>
+  <div class="calendar-weekdays">
+  <div v-for="day in ['일','월','화','수','목','금','토']" :key="day" class="weekday">{{ day }}</div>
+  </div> 
   <div class="calendar">
     <div
       v-for="day in days"
@@ -197,141 +199,218 @@
   </script>
   
   <style>
-  /* 전체 컨테이너 */
-  .schedule-container {
-    max-width: 1200px;
-    margin: auto;
-    padding: 20px;
-  }
-  
-  /* 월 변경 헤더 */
-  .month-header {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 20px;
-    margin-bottom: 20px;
-  }
-  
-  /* 월 변경 버튼 */
-  .month-button {
-    background: #444;
-    color: #fff;
-    border: none;
-    font-size: 20px;
-    padding: 5px 10px;
-    cursor: pointer;
-    border-radius: 4px;
-  }
-  
-  /* 일정 목록 + 달력 */
-  .content-container {
-    display: flex;
-    justify-content: space-between;
-    gap: 20px;
-  }
-  
-  /* 일정 목록 */
-  .schedule-list {
-    flex: 0 0 65%;
-    background: #f9f9f9;
-    border-radius: 8px;
-    padding: 20px;
-  }
-  
-  /* 일정 아이템 */
-  .event-item {
-    background: #fff;
-    border-radius: 6px;
-    margin-bottom: 6px;
-    padding: 10px;
-    cursor: pointer;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  
-  .event-item:hover {
-    background: #eee;
-  }
-  
-  /* 달력 컨테이너 */
-  .calendar-container {
-    flex: 0 0 30%;
-    background: #fff;
-    border-radius: 8px;
-    padding: 20px;
-  }
-  
-  /* 달력 그리드 */
-  .calendar {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 5px;
-  }
-  
-  /* 날짜 칸 */
-  .calendar-day {
-    position: relative;
-    width: 60px;
-    height: 50px;
-    display: flex;
-    flex-direction: column; /* 세로 쌓기 */
-    align-items: center;
-    justify-content: center;
-    background: #f0f0f0;
-    border-radius: 4px;
-    font-weight: bold;
-    cursor: pointer;
-  }
-  
-  /* 이벤트 라인 */
-  .event-box {
-    position: absolute;
-    bottom: 4px;
-    width: 90%;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-  
-  .event-line {
-    width: 100%;
-    height: 3px;
-    border-radius: 1px;
-  }
-  
-  /* 모달 */
-  .modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background: rgba(0, 0, 0, 0.4);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 999;
-  }
-  
-  .modal-content {
-    background: #fff;
-    padding: 20px;
-    border-radius: 8px;
-    width: 300px;
-    max-width: 90%;
-    text-align: center;
-  }
-  
-  .close-button {
-    margin-top: 10px;
-    background: #f33;
-    color: #fff;
-    border: none;
-    padding: 8px 12px;
-    border-radius: 4px;
-    cursor: pointer;
-  }
+/* 전체 배경 스타일 */
+body {
+  background-color: #ffffff;
+  font-family: 'Noto Sans KR', 'Apple SD Gothic Neo', sans-serif;
+  color: #333;
+  font-size: 13.5px;
+}
+
+/* 전체 컨테이너 */
+.schedule-container {
+  max-width: 1100px;
+  margin: 80px auto;
+  padding: 10px;
+}
+
+/* 월 변경 헤더 */
+.month-header {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.month-header h2 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+}
+
+/* 월 변경 버튼 */
+.month-button {
+  background: #f0f0f0;
+  color: #333;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 14px;
+  padding: 4px 8px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.month-button:hover {
+  background: #e0e0e0;
+}
+
+/* 일정 목록 + 달력 영역 */
+.content-container {
+  display: flex;
+  gap: 20px;
+}
+
+/* 일정 목록 */
+.schedule-list {
+  flex: 1;
+  background: #fff;
+  border-radius: 10px;
+  padding: 16px 20px;
+  border: 1px solid #eee;
+}
+
+.schedule-list h2 {
+  font-size: 16px;
+  margin-bottom: 14px;
+}
+
+.schedule-list h3 {
+  font-size: 14px;
+  color: #666;
+  margin-top: 20px;
+  margin-bottom: 8px;
+}
+
+.event-item {
+  border: 1px solid #e0e0e0;
+  background: #fdfdfd;
+  border-left: 4px solid #7eb6ff;
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin-bottom: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.event-item:hover {
+  background: #f0f6ff;
+}
+
+
+/* 달력 */
+.calendar-container {
+  width: 360px;
+  background: #fff;
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.05);
+  border: 1px solid #eee;
+}
+
+.calendar {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+}
+
+.calendar-day {
+  box-sizing: border-box;
+  padding-bottom: 4px; /* 아래 여백 확보 */
+  background: #f4f6f8;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+  aspect-ratio: 1 / 1;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.calendar-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  text-align: center;
+  font-weight: 600;
+  font-size: 13px;
+  color: #888;
+  margin-bottom: 6px;
+}
+
+.weekday {
+  padding: 2px 0;
+}
+
+
+.event-box {
+  position: absolute;
+  bottom: 4px;
+  left: 4px;
+  right: 4px;
+  padding: 0 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.event-line {
+  height: 2px;
+  border-radius: 1px;
+  width: 100%;
+}
+
+
+/* 모달 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: #fff;
+  padding: 24px;
+  border-radius: 10px;
+  width: 320px;
+  max-width: 90%;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+  text-align: left;
+  animation: fadeIn 0.3s ease;
+}
+
+.modal-content h2 {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 10px;
+  color: #222;
+}
+
+.modal-content p strong {
+  display: inline-block;
+  width: 48px;
+  color: #444;
+}
+
+.close-button {
+  display: inline-block;
+  margin-top: 16px;
+  background: #666;
+  color: #fff;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+
+
   </style>
   

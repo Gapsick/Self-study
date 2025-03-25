@@ -1,5 +1,6 @@
 <template>
   <div>
+    <div class="notice-edit-container">
     <h2>공지사항 수정</h2>
     <form @submit.prevent="updateNoticeData">
       <label>제목</label>
@@ -16,6 +17,7 @@
         <option value="3">3학년</option>
       </select>
 
+      <div v-if="selectedYear">
       <label>과목</label>
       <select v-model="notice.subject_id">
         <option value="">과목 선택</option>
@@ -23,25 +25,37 @@
           {{ getSubjectName(subject.id) }}
         </option>
       </select>
+      </div>
 
-      <label>공지 고정</label>
-      <input type="checkbox" v-model="notice.is_pinned" />
+      <div class="form-group">
+      <label>파일 첨부</label>
 
-      <div v-if="notice.file_path">
-        <p>기존 파일: 
+      <div class="file-upload-box" v-if="notice.file_path && !removeFile">
+        <span class="file-name">
+          📄 
           <a :href="`http://localhost:5000/${notice.file_path}`" target="_blank">
             {{ getFileName(notice.file_path) }}
           </a>
-        </p>
-        <button type="button" @click="removeExistingFile">파일 삭제</button>
+        </span>
+        <button type="button" class="file-remove-btn" @click="removeExistingFile">❌</button>
       </div>
 
-      <label>파일 업로드</label>
-      <input type="file" @change="handleFileUpload" />
+      <label for="file-upload" class="file-label">📁 파일 선택</label>
+      <input id="file-upload" type="file" @change="handleFileUpload" hidden />
+      </div>
 
+      <div class="form-group switch-container">
+      <span class="switch-label">공지 고정</span>
+      <input id="pinned" type="checkbox" v-model="notice.is_pinned" />
+      </div>
+
+
+      <div class="action-buttons">
       <button type="submit">저장</button>
       <button type="button" @click="cancelEdit">취소</button>
+      </div>
     </form>
+    </div>
   </div>
 </template>
 
@@ -175,3 +189,191 @@ export default {
   },
 };
 </script>
+
+
+<style scoped>
+.notice-edit-container {
+  max-width: 800px;
+  margin: 100px auto;
+  padding: 30px;
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  font-family: 'Noto Sans KR', sans-serif;
+}
+
+h2 {
+  font-size: 24px;
+  color: #333;
+  margin-bottom: 20px;
+}
+
+label {
+  display: block;
+  font-size: 16px;
+  font-weight: 600;
+  margin: 20px 0 8px;
+  color: #555;
+}
+
+input[type="text"],
+textarea,
+select {
+  width: 100%;
+  padding: 12px;
+  font-size: 14px;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+  box-sizing: border-box;
+}
+
+textarea {
+  resize: vertical;
+  min-height: 120px;
+}
+
+input[type="text"]:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: #1d4ed8;
+}
+
+/* ✅ 공지 고정 스위치 */
+.switch-container {
+  display: flex;
+  align-items: center; /* 👈 center로 바꾸면 정확히 수직 중앙 정렬 */
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.switch-label {
+  font-size: 16px;
+  font-weight: 600;
+  color: #555;
+  line-height: 22px;
+}
+
+.switch-container input[type="checkbox"] {
+  width: 42px;
+  height: 22px;
+  border-radius: 50px;
+  appearance: none;
+  background-color: #ccc;
+  position: relative;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  flex-shrink: 0;
+}
+
+.switch-container input[type="checkbox"]::before {
+  content: '';
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background-color: white;
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  transition: transform 0.3s ease;
+}
+
+.switch-container input[type="checkbox"]:checked {
+  background-color: #4caf50;
+}
+
+.switch-container input[type="checkbox"]:checked::before {
+  transform: translateX(20px);
+}
+
+
+/* ✅ 파일 업로드 */
+.file-upload-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: #f3f4f6;
+  padding: 10px 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  margin-bottom: 10px;
+  font-size: 14px;
+}
+
+.file-name a {
+  color: #2563eb;
+  text-decoration: underline;
+  overflow-wrap: anywhere;
+}
+
+.file-remove-btn {
+  background: none;
+  border: none;
+  color: #ef4444;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.file-remove-btn:hover {
+  color: #dc2626;
+}
+
+.file-label {
+  display: inline-block;
+  background-color: #1d4ed8;
+  color: white;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+}
+/* ✅ 새 파일 업로드 버튼 */
+.file-label {
+  display: inline-block;
+  margin-top: 12px;
+  background-color: #1d4ed8;
+  color: white;
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+/* ✅ 버튼 그룹 */
+.action-buttons {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 40px;
+}
+
+.action-buttons button {
+  flex: 1;
+  padding: 12px 0;
+  font-size: 16px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.action-buttons button[type="submit"] {
+  background-color: #1d4ed8;
+  color: white;
+}
+
+.action-buttons button[type="submit"]:hover {
+  background-color: #2563eb;
+}
+
+.action-buttons button[type="button"] {
+  background-color: #9ca3af;
+  color: white;
+}
+
+.action-buttons button[type="button"]:hover {
+  background-color: #6b7280;
+}
+
+</style>
+

@@ -17,9 +17,16 @@ const storage = multer.diskStorage({
   },
   filename: (req, file, cb) => {
     const timestamp = Date.now();
-    const safeFileName = file.originalname.replace(/\s+/g, "_"); // ✅ 파일명 공백 제거
-    cb(null, `${timestamp}-${safeFileName}`);
+  
+    // ✅ 한글 파일명 깨짐 방지: latin1 → utf8
+    const originalName = Buffer.from(file.originalname, "latin1").toString("utf8");
+  
+    // ✅ 공백 제거 및 특수문자 필터링 (선택)
+    const safeName = originalName.replace(/\s+/g, "_").replace(/[^\w가-힣.\-_]/g, "");
+  
+    cb(null, `${timestamp}-${safeName}`);
   },
+  
 });
 
 const upload = multer({ storage });

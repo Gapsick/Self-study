@@ -1,51 +1,57 @@
 <template>
-  <div>
-    <br><br><br><br>
+  <div class="notice-write-container">
     <h2>공지사항 작성</h2>
     <form @submit.prevent="submitForm">
-      <div>
-        <label>제목</label>
-        <input type="text" v-model="noticeData.title" required />
+      <!-- 제목 -->
+      <div class="form-group">
+        <label for="title">제목</label>
+        <input id="title" type="text" v-model="noticeData.title" required />
       </div>
 
-      <div>
-        <label>내용</label>
-        <textarea v-model="noticeData.content" required></textarea>
+      <!-- 내용 -->
+      <div class="form-group">
+        <label for="content">내용</label>
+        <textarea id="content" v-model="noticeData.content" required></textarea>
       </div>
 
-      <!-- 🔹 학년 선택 -->
-      <div>
-        <label>학년</label>
-        <select v-model="selectedYear">
+      <!-- 학년 -->
+      <div class="form-group">
+        <label for="year">학년</label>
+        <select id="year" v-model="selectedYear">
           <option value="전체">전체</option>
-          <option v-for="year in [1, 2, 3]" :key="year" :value="year">
-            {{ year }}학년
+          <option v-for="year in [1, 2, 3]" :key="year" :value="year">{{ year }}학년</option>
+        </select>
+      </div>
+
+      <!-- 과목 -->
+      <div v-if="selectedYear !== '전체' && subjects.length > 0" class="form-group">
+        <label for="subject">과목</label>
+        <select id="subject" v-model="noticeData.subject_id" :key="selectedYear">
+          <option value="">과목 선택</option>
+          <option v-for="subject in subjects" :key="subject.id" :value="subject.id">
+            {{ subject.name }}
           </option>
         </select>
       </div>
 
-      <!-- 🔹 과목 선택 (학년이 '전체'가 아닐 때만 표시) -->
-<!-- ✅ 조건문에서 .value 제거 -->
-<div v-if="selectedYear !== '전체' && subjects.length > 0">
-  <label>과목</label>
-  <select v-model="noticeData.subject_id" :key="selectedYear">
-    <option value="">과목 선택</option>
-    <option v-for="subject in subjects" :key="subject.id" :value="subject.id">
-      {{ subject.name }}
-    </option>
-  </select>
-</div>
-      <div>
+      <!-- 파일 첨부 -->
+      <div class="form-group">
         <label>파일 첨부</label>
-        <input type="file" @change="handleFileUpload" />
+        <div class="file-upload-box" v-if="fileName">
+          <span class="file-name" :title="fileName">📄 {{ fileName }}</span>
+          <button type="button" class="file-remove-btn" @click="removeFile">❌</button>
+        </div>
+        <label for="file-upload" class="file-label">📁 파일 선택</label>
+        <input id="file-upload" type="file" @change="handleFileUpload" hidden />
       </div>
 
-      <div>
-        <label>공지 고정</label>
-        <input type="checkbox" v-model="noticeData.is_pinned" />
+      <!-- 공지 고정 -->
+      <div class="form-group switch-container">
+        <label for="pin">공지 고정</label>
+        <input id="pin" type="checkbox" v-model="noticeData.is_pinned" />
       </div>
 
-      <button type="submit">작성</button>
+      <button type="submit" class="submit-btn">작성</button>
     </form>
   </div>
 </template>
@@ -56,34 +62,35 @@ import { useNoticeForm } from "@/composables/useNoticeForm";
 import { useSubjects } from "@/composables/useSubjects";
 import { useRouter } from "vue-router";
 
-const { noticeData, handleFileUpload, submitNotice } = useNoticeForm();
+const { noticeData, handleFileUpload: realFileUpload, submitNotice } = useNoticeForm();
 const router = useRouter();
-
-// ✅ 학년 선택 변수
 const selectedYear = ref("전체");
-
-// ✅ 학년별 과목 목록 가져오기
 const { subjects, loadSubjects } = useSubjects(selectedYear);
 
-// 🔹 컴포넌트가 마운트되면 과목 목록 불러오기
+const fileName = ref("");
+
+const handleFileUpload = (e) => {
+  const file = e.target.files[0];
+  if (file) {
+    fileName.value = file.name;
+    realFileUpload(e); // 실제 업로드 로직 실행
+  }
+};
+
+const removeFile = () => {
+  fileName.value = "";
+  document.getElementById("file-upload").value = null;
+};
+
 onMounted(async () => {
-  console.log("📢 컴포넌트 마운트됨 - 과목 데이터 로딩 시작");
   await loadSubjects();
 });
 
-// 🔹 학년이 변경될 때마다 과목 목록 다시 불러오기
 watch(selectedYear, async () => {
-  console.log("📢 학년 변경 감지됨:", selectedYear.value);
   await loadSubjects();
-
-  // ✅ 학년 값 업데이트 보장
   noticeData.value.academic_year = selectedYear.value === "전체" ? null : Number(selectedYear.value);
-  
-  console.log("📌 업데이트된 noticeData.academic_year:", noticeData.value.academic_year);
 });
 
-
-// 🔹 공지사항 제출 함수
 const submitForm = async () => {
   const success = await submitNotice();
   if (success) {
@@ -92,3 +99,151 @@ const submitForm = async () => {
   }
 };
 </script>
+
+<style scoped>
+.notice-write-container {
+  max-width: 800px;
+  margin: 100px auto;
+  padding: 30px;
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  font-family: 'Noto Sans KR', sans-serif;
+}
+
+h2 {
+  font-size: 24px;
+  color: #333;
+  margin-bottom: 20px;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+label {
+  display: block;
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: #555;
+}
+
+input[type="text"],
+textarea,
+select {
+  width: 100%;
+  padding: 12px;
+  font-size: 14px;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+  box-sizing: border-box;
+}
+
+textarea {
+  resize: vertical;
+  min-height: 120px;
+}
+
+.submit-btn {
+  background-color: #1d4ed8;
+  color: white;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 6px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+  width: 100%;
+}
+
+.submit-btn:hover {
+  background-color: #2563eb;
+}
+
+/* ✅ 파일 업로드 */
+.file-upload-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  padding: 10px 12px;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  background-color: #f9f9f9;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.file-name {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 14px;
+  color: #333;
+}
+
+.file-remove-btn {
+  background: none;
+  border: none;
+  color: #d32f2f;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.file-label {
+  display: inline-block;
+  background-color: #1d4ed8;
+  color: white;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+/* ✅ 스위치 */
+.switch-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.switch-container input[type="checkbox"] {
+  width: 40px;
+  height: 20px;
+  border-radius: 50px;
+  appearance: none;
+  background-color: #ccc;
+  position: relative;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.switch-container input[type="checkbox"]::before {
+  content: '';
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background-color: white;
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  transition: transform 0.3s ease;
+}
+
+.switch-container input[type="checkbox"]:checked {
+  background-color: #4caf50;
+}
+
+.switch-container input[type="checkbox"]:checked::before {
+  transform: translateX(20px);
+}
+
+input[type="text"]:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: #1d4ed8;
+}
+</style>

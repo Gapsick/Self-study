@@ -1,162 +1,123 @@
 <template>
-  <div class="app-container">
-    <Navbar />
+  <div class="main-wrapper">
+    <div class="notice-container">
+      <div class="notice-list">
+        <h2>공지사항</h2>
+        <ul>
+          <li 
+            v-for="notice in notices" 
+            :key="notice.id"
+            :class="{ active: selectedNotice && selectedNotice.id === notice.id }"
+            @click="selectNotice(notice)"
+          >
+            {{ notice.title }}
+          </li>
+        </ul>
+      </div>
 
-    <section id="main">
-      <h2>📅 메인 페이지</h2>
-      <button @click="goToSchedule">일정 페이지로 이동</button>
-    </section>
-
-    <section id="notices">
-      <h2>📢 공지사항 보기</h2>
-      <button @click="goToNotices">공지사항</button>
-    </section>
-
-    <section id="schedule">
-      <h2>📆 시간표 보기</h2>
-      <button @click="goToTimetable">시간표</button>
-    </section>
-
-    <section id="admin" v-if="isAdmin">
-      <h2>🔒 관리자 기능</h2>
-      <button @click="goToAdminPage">회원 승인 관리</button>
-    </section>
+      <div class="notice-detail" v-if="selectedNotice">
+        <h3>{{ selectedNotice.title }}</h3>
+        <p>{{ selectedNotice.content }}</p>
+        <p class="date">{{ selectedNotice.date }}</p>
+      </div>
+    </div>
   </div>
 </template>
 
-
 <script setup>
-import { useRouter } from "vue-router"
-import { useAuthStore } from "@/stores/useAuthStore"
-import { ref, computed, onMounted } from "vue"
-import Navbar from '@/components/Navbar.vue'
+import { ref } from 'vue'
 
-const router = useRouter()
-const auth = useAuthStore()
+const notices = ref([
+  { id: 1, title: '중간고사 일정 공지', content: '중간고사는 3월 25일부터 시작됩니다.', date: '2025-03-10' },
+  { id: 2, title: '1학기 수강 신청 안내', content: '수강신청은 3월 15일까지입니다.', date: '2025-03-05' },
+  { id: 3, title: '학과 워크숍 공지', content: '워크숍은 4월 1일 개최 예정입니다.', date: '2025-03-01' },
+])
 
-// ✅ 반응형 computed
-const userRole = computed(() => auth.userRole)
-const isAdmin = computed(() => auth.isAdmin)
-const isAuthenticated = computed(() => auth.isAuthenticated)
+const selectedNotice = ref(notices.value[0])
 
-
-// ✅ 권한 체크
-onMounted(() => {
-  auth.checkAuth()
-
-  console.log("✅ token:", auth.token);
-  console.log("✅ userRole:", auth.userRole);
-  console.log("✅ isAdmin:", auth.isAdmin);
-  console.log("✅ isAuthenticated:", auth.isAuthenticated);
-
-  if (!auth.isAuthenticated) {
-    alert("로그인이 필요합니다!")
-    router.push("/login")
-  }
-})
-
-// ✅ 라우팅 함수
-const navigateWithAuth = (path) => {
-  if (!auth.isAuthenticated) {
-    alert("로그인이 필요합니다!")
-    router.push("/login")
-    return
-  }
-  router.push(path)
-}
-
-const goToSchedule = () => navigateWithAuth("/schedule")
-const goToNotices = () => navigateWithAuth("/notices")
-const goToTimetable = () => navigateWithAuth("/timetable")
-const goToAdminPage = () => navigateWithAuth("/admin")
-
-const logout = () => {
-  auth.logout()
-  router.push("/login")
+function selectNotice(notice) {
+  selectedNotice.value = notice
 }
 </script>
 
 <style scoped>
-html {
-  scroll-behavior: smooth;
-}
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR&display=swap');
 
-.app-container {
-  font-family: 'Nanum Gothic', sans-serif;
-}
-
-.navbar {
-  position: fixed;
-  top: 0;
-  width: 100%;
-  background-color: #f0f8ff;
-  padding: 12px 20px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+.main-wrapper {
   display: flex;
-  gap: 20px;
   justify-content: center;
-  z-index: 999;
+  padding: 100px 16px 40px; /* ✅ 위쪽 여백 추가 */
+  font-family: 'Noto Sans KR', sans-serif;
 }
 
-.navbar {
-  position: fixed;
-  top: 0;
-  width: 100%;
-  height: 60px;
-  background-color: #eef6fd;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+
+.notice-container {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0 40px;
-  z-index: 1000;
+  width: 100%;
+  max-width: 960px;
+  background-color: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
 }
 
-.nav-left {
-  font-weight: bold;
-  font-size: 18px;
+.notice-list {
+  flex: 1;
+  max-width: 300px;
+  border-right: 1px solid #e0e0e0;
+  padding: 24px;
+}
+
+.notice-list h2 {
+  font-size: 20px;
+  margin-bottom: 16px;
   color: #1e3a8a;
+  font-weight: 600;
 }
 
-.nav-links {
-  display: flex;
-  gap: 30px;
+.notice-list ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
 }
 
-.nav-item {
-  text-decoration: none;
+.notice-list li {
+  padding: 12px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-bottom: 8px;
+  transition: background-color 0.2s;
   color: #333;
-  font-weight: 500;
-  position: relative;
-  padding-bottom: 4px;
-  transition: all 0.2s;
 }
 
-.nav-item:hover {
-  color: #2563eb;
+.notice-list li:hover,
+.notice-list li.active {
+  background-color: #eef4ff;
+  color: #1e40af;
+  font-weight: 600;
 }
 
-.nav-item::after {
-  content: "";
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 0%;
-  height: 2px;
-  background-color: #2563eb;
-  transition: 0.3s;
+.notice-detail {
+  flex: 2;
+  padding: 24px;
 }
 
-.nav-item:hover::after {
-  width: 100%;
+.notice-detail h3 {
+  font-size: 22px;
+  margin-bottom: 12px;
+  color: #111827;
+  font-weight: 700;
 }
 
-
-section {
-  padding: 100px 20px;
-  min-height: 100vh;
-  text-align: center;
-  border-bottom: 1px solid #eee;
+.notice-detail p {
+  font-size: 16px;
+  color: #374151;
+  line-height: 1.6;
 }
 
+.notice-detail .date {
+  font-size: 14px;
+  color: #9ca3af;
+  margin-top: 16px;
+}
 </style>

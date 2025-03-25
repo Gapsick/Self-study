@@ -25,7 +25,7 @@
   const router = useRouter()
   const authStore = useAuthStore()
   
-  const isAdmin = computed(() => authStore.role === 'admin')
+  const isAdmin = computed(() => authStore.isAdmin)
   
   function logout() {
     authStore.logout()

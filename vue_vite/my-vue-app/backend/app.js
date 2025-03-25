@@ -4,6 +4,7 @@ const bodyParser = require("body-parser"); // 이거도 필요!
 require("dotenv").config();
 const app = express(); // ✅ 제일 위로 올리기
 
+
 // 라인 Webhook 먼저 연결
 const webhookRoutes = require('./config/webhook');
 app.use(bodyParser.json());
@@ -22,21 +23,26 @@ const holidayRoutes = require("./routes/holidays");
 const path = require("path");
 const fs = require("fs");
 
+
 app.get("/uploads/:filename", (req, res) => {
-  const filename = req.params.filename;
+  const filename = decodeURIComponent(req.params.filename);
   const filePath = path.join(__dirname, "uploads", filename);
 
-  // 파일이 존재하는지 확인
   if (!fs.existsSync(filePath)) {
     return res.status(404).json({ message: "파일을 찾을 수 없습니다." });
   }
 
-  // 📌 다운로드 헤더 추가
-  res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+  // ✅ 숫자 제거: "1234-파일명.확장자" → "파일명.확장자"
+  const originalName = filename.replace(/^\d+-/, "");
+
+  // ✅ 브라우저 호환을 위한 Content-Disposition 설정 (크롬/엣지/사파리 모두 지원)
+  const encodedFileName = encodeURIComponent(originalName);
+  res.setHeader("Content-Disposition", `attachment; filename="${encodedFileName}"; filename*=UTF-8''${encodedFileName}`);
   res.setHeader("Content-Type", "application/octet-stream");
 
   res.download(filePath);
 });
+
 
 // ✅ CORS 설정 (프론트엔드 도메인 허용)
 app.use(cors({
