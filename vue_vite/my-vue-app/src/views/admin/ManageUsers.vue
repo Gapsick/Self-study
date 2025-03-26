@@ -1,5 +1,4 @@
 <template>
-  <br><br><br><br><br><br><br>
   <div class="admin-container">
     <h2>회원 승인 관리</h2>
 
@@ -105,3 +104,99 @@ const rejectUser = async (user) => {
 // ✅ 컴포넌트가 로드될 때 승인 대기 사용자 목록 불러오기
 onMounted(fetchPendingUsers);
 </script>
+
+<style scoped>
+.admin-container {
+  background: #fff;
+  border-radius: 12px;
+  padding: 30px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.04);
+  margin-top: 30px;
+  font-family: 'Noto Sans KR', sans-serif;
+  max-width: 960px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* 제목 */
+.admin-container h2 {
+  font-size: 20px;
+  font-weight: bold;
+  color: #1f2937;
+  margin-bottom: 20px;
+}
+
+/* 테이블 전체 */
+table {
+  width: 100%;
+  min-width: 900px;
+  border-collapse: collapse;
+  table-layout: auto; /* 또는 fixed */
+  background-color: #fff;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+/* 헤더 셀 */
+thead th {
+  background-color: #f3f4f6;
+  color: #374151;
+  font-weight: 600;
+  padding: 14px 16px;  /* ✅ 패딩 여유 */
+  font-size: 14px;
+  text-align: center;
+  white-space: nowrap; /* ✅ 줄바꿈 방지 */
+}
+
+/* 바디 셀 */
+tbody td {
+  padding: 12px 16px;
+  font-size: 13px;
+  color: #333;
+  text-align: center;
+  white-space: nowrap; /* ✅ 줄바꿈 방지 */
+}
+
+/* 드롭다운 */
+select {
+  padding: 6px 8px;
+  font-size: 13px;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  appearance: none;
+}
+
+/* 버튼 */
+button {
+  padding: 6px 12px;
+  font-size: 13px;
+  border: none;
+  border-radius: 6px;
+  background-color: #3b82f6;
+  color: white;
+  cursor: pointer;
+  margin-right: 6px;
+  transition: background-color 0.2s;
+}
+button:hover {
+  background-color: #2563eb;
+}
+
+/* 거절 버튼만 별도 색상 */
+.reject-btn {
+  background-color: #ef4444;
+}
+.reject-btn:hover {
+  background-color: #dc2626;
+}
+
+/* 에러 메시지 */
+.error-message {
+  margin-top: 20px;
+  color: #ef4444;
+  font-weight: 500;
+  font-size: 14px;
+}
+</style>

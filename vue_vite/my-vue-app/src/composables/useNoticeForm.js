@@ -102,7 +102,8 @@ async function submitNotice(isEdit = false, noticeId = null) {
     formData.append("file", noticeData.value.file);
   }
 
-  const userName = localStorage.getItem("userName") || "관리자";
+  const user = JSON.parse(localStorage.getItem("user"));
+  const userName = user?.name || "관리자";
   formData.append("author", userName);
 
   console.log("🚀 전송할 FormData:", [...formData.entries()]);

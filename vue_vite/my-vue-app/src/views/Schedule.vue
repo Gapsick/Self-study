@@ -1,76 +1,73 @@
 <template>
-    <div class="schedule-container">
-      <!-- 상단 월 변경 헤더 -->
-      <div class="month-header">
-        <button @click="prevMonth" class="month-button">◀</button>
-        <h2>{{ currentYear }}년 {{ currentMonth }}월</h2>
-        <button @click="nextMonth" class="month-button">▶</button>
+  <div class="schedule-container">
+
+    <!-- 📌 월/년도 헤더 (왼쪽만) -->
+    <div class="top-header">
+      <button @click="prevMonth" class="month-nav">＜</button>
+      <span class="month-label">{{ currentYear }}년 {{ currentMonth }}월</span>
+      <button @click="nextMonth" class="month-nav">＞</button>
+    </div>
+
+    <div class="content-container">
+      <!-- 좌측: 일정 리스트 -->
+      <div class="schedule-list">
+        <div v-for="(events, date) in eventsByDate" :key="date">
+          <h3 :id="'event-' + date">{{ formatDate(date) }}</h3>
+          <div
+            v-for="event in events"
+            :key="event.id"
+            class="event-item"
+            @click="openModal(event)"
+          >
+            {{ event.title }}
+          </div>
+        </div>
       </div>
-  
-      <!-- 본문 영역: 일정 목록 + 달력 -->
-      <div class="content-container">
-        <!-- 좌측 일정 목록 -->
-        <div class="schedule-list">
-          <h2>📅 일정 목록</h2>
-          <div v-for="(events, date) in eventsByDate" :key="date">
-            <!-- 날짜 헤더 -->
-            <h3 :id="'event-' + date">{{ formatDate(date) }}</h3>
-            <!-- 해당 날짜의 일정들 -->
-            <div
-              v-for="event in events"
-              :key="event.id"
-              class="event-item"
-              @click="openModal(event)"
-            >
-              {{ event.title }}
+
+      <!-- 우측: 달력 -->
+      <div class="calendar-container">
+        <!-- ✅ 깔끔한 연/월 표기만 -->
+        <h2 class="calendar-title">{{ currentYear }}년 {{ currentMonth }}월</h2>
+
+        <!-- 요일 -->
+        <div class="calendar-weekdays">
+          <div v-for="day in ['일','월','화','수','목','금','토']" :key="day" class="weekday">{{ day }}</div>
+        </div>
+
+        <!-- 날짜 -->
+        <div class="calendar">
+          <div
+            v-for="day in days"
+            :key="day"
+            class="calendar-day"
+            @click="scrollToEvent(day)"
+          >
+            <span>{{ day }}</span>
+            <div v-if="eventsByDate[getFormattedDate(day)]" class="event-box">
+              <div
+                v-for="(event, index) in eventsByDate[getFormattedDate(day)]"
+                :key="index"
+                class="event-line"
+                :style="{ backgroundColor: getEventColor(index) }"
+              ></div>
             </div>
           </div>
         </div>
-  
-<!-- ✅ 달력 안에 이동 바 배치 -->
-<div class="calendar-container">
-  <!-- ✅ 이동 바를 달력 위에 배치 --> 
-  <div class="month-header">
-    <button @click="prevMonth" class="month-button">◀</button>
-    <h2>{{ currentYear }}년 {{ currentMonth }}월</h2>
-    <button @click="nextMonth" class="month-button">▶</button>
-  </div>
+      </div>
+    </div>
 
-  <div class="calendar-weekdays">
-  <div v-for="day in ['일','월','화','수','목','금','토']" :key="day" class="weekday">{{ day }}</div>
-  </div> 
-  <div class="calendar">
-    <div
-      v-for="day in days"
-      :key="day"
-      class="calendar-day"
-      @click="scrollToEvent(day)"
-    >
-      <span>{{ day }}</span>
-      <div v-if="eventsByDate[getFormattedDate(day)]" class="event-box">
-        <div
-          v-for="(event, index) in eventsByDate[getFormattedDate(day)]"
-          :key="index"
-          class="event-line"
-          :style="{ backgroundColor: getEventColor(index) }"
-        ></div>
+    <!-- 모달 -->
+    <div v-if="showModal" class="modal-overlay" @click="showModal = false">
+      <div class="modal-content" @click.stop>
+        <h2>{{ selectedEvent?.title }}</h2>
+        <p><strong>날짜:</strong> {{ selectedEvent?.start }}</p>
+        <p><strong>설명:</strong> {{ selectedEvent?.description || "설명 없음" }}</p>
+        <button @click="showModal = false" class="close-button">닫기</button>
       </div>
     </div>
   </div>
-</div>
-      </div>
-  
-      <!-- 일정 상세 모달 -->
-      <div v-if="showModal" class="modal-overlay" @click="showModal = false">
-        <div class="modal-content" @click.stop>
-          <h2>{{ selectedEvent?.title }}</h2>
-          <p><strong>날짜:</strong> {{ selectedEvent?.start }}</p>
-          <p><strong>설명:</strong> {{ selectedEvent?.description || "설명 없음" }}</p>
-          <button @click="showModal = false" class="close-button">닫기</button>
-        </div>
-      </div>
-    </div>
-  </template>
+</template>
+
   
   <script>
   import axios from "axios";
@@ -198,219 +195,212 @@
   };
   </script>
   
-  <style>
-/* 전체 배경 스타일 */
-body {
-  background-color: #ffffff;
-  font-family: 'Noto Sans KR', 'Apple SD Gothic Neo', sans-serif;
-  color: #333;
-  font-size: 13.5px;
-}
-
-/* 전체 컨테이너 */
-.schedule-container {
-  max-width: 1100px;
-  margin: 80px auto;
-  padding: 10px;
-}
-
-/* 월 변경 헤더 */
-.month-header {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 16px;
-}
-
-.month-header h2 {
-  font-size: 18px;
-  font-weight: 600;
-  color: #333;
-}
-
-/* 월 변경 버튼 */
-.month-button {
-  background: #f0f0f0;
-  color: #333;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  font-size: 14px;
-  padding: 4px 8px;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.month-button:hover {
-  background: #e0e0e0;
-}
-
-/* 일정 목록 + 달력 영역 */
-.content-container {
-  display: flex;
-  gap: 20px;
-}
-
-/* 일정 목록 */
-.schedule-list {
-  flex: 1;
-  background: #fff;
-  border-radius: 10px;
-  padding: 16px 20px;
-  border: 1px solid #eee;
-}
-
-.schedule-list h2 {
-  font-size: 16px;
-  margin-bottom: 14px;
-}
-
-.schedule-list h3 {
-  font-size: 14px;
-  color: #666;
-  margin-top: 20px;
-  margin-bottom: 8px;
-}
-
-.event-item {
-  border: 1px solid #e0e0e0;
-  background: #fdfdfd;
-  border-left: 4px solid #7eb6ff;
-  border-radius: 6px;
-  padding: 8px 12px;
-  margin-bottom: 6px;
-  font-size: 13px;
-  cursor: pointer;
-  transition: background 0.2s ease;
-}
-
-.event-item:hover {
-  background: #f0f6ff;
-}
-
-
-/* 달력 */
-.calendar-container {
-  width: 360px;
-  background: #fff;
-  border-radius: 10px;
-  padding: 20px;
-  box-shadow: 0 0 10px rgba(0,0,0,0.05);
-  border: 1px solid #eee;
-}
-
-.calendar {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 6px;
-}
-
-.calendar-day {
-  box-sizing: border-box;
-  padding-bottom: 4px; /* 아래 여백 확보 */
-  background: #f4f6f8;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
-  color: #333;
-  aspect-ratio: 1 / 1;
-  position: relative;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  flex-direction: column;
-  cursor: pointer;
-  overflow: hidden;
-}
-
-.calendar-weekdays {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  text-align: center;
-  font-weight: 600;
-  font-size: 13px;
-  color: #888;
-  margin-bottom: 6px;
-}
-
-.weekday {
-  padding: 2px 0;
-}
-
-
-.event-box {
-  position: absolute;
-  bottom: 4px;
-  left: 4px;
-  right: 4px;
-  padding: 0 2px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.event-line {
-  height: 2px;
-  border-radius: 1px;
-  width: 100%;
-}
-
-
-/* 모달 */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: rgba(0, 0, 0, 0.4);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.modal-content {
-  background: #fff;
-  padding: 24px;
-  border-radius: 10px;
-  width: 320px;
-  max-width: 90%;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.1);
-  text-align: left;
-  animation: fadeIn 0.3s ease;
-}
-
-.modal-content h2 {
-  font-size: 18px;
-  font-weight: 600;
-  margin-bottom: 10px;
-  color: #222;
-}
-
-.modal-content p strong {
-  display: inline-block;
-  width: 48px;
-  color: #444;
-}
-
-.close-button {
-  display: inline-block;
-  margin-top: 16px;
-  background: #666;
-  color: #fff;
-  border: none;
-  padding: 8px 12px;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: scale(0.95); }
-  to { opacity: 1; transform: scale(1); }
-}
-
-
-
+  <style scoped>
+  /* 전체 배경 스타일 */
+  body {
+    background-color: #ffffff;
+    font-family: 'Noto Sans KR', 'Apple SD Gothic Neo', sans-serif;
+    color: #333;
+    font-size: 13.5px;
+  }
+  
+  /* 전체 컨테이너 */
+  .schedule-container {
+    max-width: 1100px;
+    margin: 120px auto;
+    padding: 10px;
+  }
+  
+  /* 헤더 */
+  .top-header {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .month-label {
+    font-size: 20px;
+    font-weight: 600;
+    color: #333;
+  }
+  .month-nav {
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    color: #888;
+    transition: color 0.2s;
+  }
+  .month-nav:hover {
+    color: #000;
+  }
+  
+  /* 내용 레이아웃 */
+  .content-container {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+  }
+  
+  /* 일정 리스트 */
+  .schedule-list {
+    flex: 1;
+    background: #fff;
+    border-radius: 10px;
+    padding: 16px 20px;
+    border: 1px solid #eee;
+  }
+  .schedule-list h3 {
+    font-size: 14px;
+    color: #666;
+    margin-top: 20px;
+    margin-bottom: 8px;
+  }
+  .event-item {
+    border: 1px solid #e0e0e0;
+    background: #fdfdfd;
+    border-left: 4px solid #7eb6ff;
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin-bottom: 6px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+  }
+  .event-item:hover {
+    background: #f0f6ff;
+  }
+  
+  /* 달력 카드 */
+  .calendar-container {
+    width: 340px;
+    background: #fff;
+    border-radius: 10px;
+    padding: 20px 16px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.05);
+    border: 1px solid #eee;
+    box-sizing: border-box;
+    height: fit-content;
+    flex-shrink: 0;
+  }
+  
+  /* 달력 타이틀 */
+  .calendar-title {
+    font-size: 16px;
+    text-align: center;
+    margin-bottom: 10px;
+    color: #444;
+  }
+  
+  /* 요일 행 */
+  .calendar-weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    text-align: center;
+    font-weight: 600;
+    font-size: 13px;
+    color: #888;
+    margin-bottom: 6px;
+  }
+  .weekday {
+    padding: 2px 0;
+  }
+  
+  /* 날짜 셀 */
+  .calendar {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 6px;
+  }
+  .calendar-day {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+    background: #f4f6f8;
+    border-radius: 8px;
+    aspect-ratio: 1 / 1;
+    padding: 6px;
+    font-size: 12px;
+    position: relative;
+    transition: background-color 0.2s ease;
+    cursor: pointer;
+  }
+  .calendar-day span {
+    font-size: 12px;
+    color: #555;
+    position: absolute;
+    top: 6px;
+    left: 6px;
+  }
+  
+  /* 오늘 날짜 스타일 */
+  .calendar-day.today {
+    border: 2px solid #3b82f6;
+    background-color: #e0f2fe;
+  }
+  
+  /* 마우스 오버 시 강조 */
+  .calendar-day:hover {
+    background-color: #dbeafe;
+  }
+  
+  /* 이벤트 있는 날짜 강조 (간접 강조) */
+  .calendar-day.has-event {
+    background-color: #f0faff;
+  }
+  
+  /* 모달 */
+  .modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+  .modal-content {
+    background: #fff;
+    padding: 24px;
+    border-radius: 10px;
+    width: 320px;
+    max-width: 90%;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+    text-align: left;
+    animation: fadeIn 0.3s ease;
+  }
+  .modal-content h2 {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 10px;
+    color: #222;
+  }
+  .modal-content p strong {
+    display: inline-block;
+    width: 48px;
+    color: #444;
+  }
+  .close-button {
+    display: inline-block;
+    margin-top: 16px;
+    background: #666;
+    color: #fff;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  
+  /* 애니메이션 */
+  @keyframes fadeIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+  }
   </style>
+  
   

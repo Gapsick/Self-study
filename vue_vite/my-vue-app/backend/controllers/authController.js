@@ -150,7 +150,8 @@ const googleCallback = async (req, res) => {
               refreshToken: "${refresh_token || ""}", 
               email: "${user.email}",  // ✅ 이메일 추가
               role: "${user.role || "student"}",
-              grade: "${user.grade || ""}"  // ✅ 학년 추가
+              grade: "${user.grade || ""}",
+              name: "${user.name}"
             }, "http://localhost:5173");
             window.close();
           </script>

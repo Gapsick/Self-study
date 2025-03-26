@@ -49,25 +49,30 @@
       <hr />
   
       <!-- 3) 과목 수정 폼 (선택된 과목) -->
-      <div v-if="editMode">
-        <h3>과목 수정</h3>
-        <div>
-          <label>ID: {{ editForm.id }}</label><br />
-          <label>과목명:
-            <input v-model="editForm.name" />
-          </label>
-          <br />
-          <label>학년:
-            <select v-model.number="editForm.academic_year">
-              <option :value="1">1학년</option>
-              <option :value="2">2학년</option>
-              <option :value="3">3학년</option>
-            </select>
-          </label>
-        </div>
+      <div v-if="editMode" class="subject-edit-form">
+      <h3>과목 수정</h3>
+
+      <label>
+        과목명
+        <input v-model="editForm.name" />
+      </label>
+
+      <label>
+        학년
+        <select v-model.number="editForm.academic_year">
+          <option :value="1">1학년</option>
+          <option :value="2">2학년</option>
+          <option :value="3">3학년</option>
+        </select>
+      </label>
+
+      <!-- 오른쪽 정렬된 버튼 -->
+      <div class="action-buttons">
         <button @click="updateSubject">수정 저장</button>
-        <button @click="cancelEdit">취소</button>
+        <button @click="cancelEdit" class="danger">취소</button>
       </div>
+      </div>
+
   
       <p v-if="errorMessage" style="color: red;">{{ errorMessage }}</p>
     </div>
@@ -179,8 +184,124 @@
   </script>
   
   <style scoped>
-  table {
-    margin-bottom: 10px;
-  }
+/* 전체 컨테이너 */
+div {
+  font-family: 'Noto Sans KR', sans-serif;
+}
+
+/* 제목 */
+h2, h3 {
+  font-size: 18px;
+  font-weight: bold;
+  color: #1f2937;
+  margin: 20px 0 14px;
+}
+
+/* 테이블 스타일 */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 20px;
+  background-color: #fff;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+th, td {
+  padding: 10px 12px;
+  font-size: 14px;
+  text-align: center;
+  border: 1px solid #e5e7eb;
+  white-space: nowrap;
+}
+
+thead {
+  background-color: #f3f4f6;
+  color: #374151;
+  font-weight: 600;
+}
+
+/* 입력 & 셀렉트 */
+input, select {
+  padding: 6px 10px;
+  font-size: 13px;
+  margin: 6px 10px 6px 0;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  min-width: 160px;
+}
+
+/* 버튼 */
+button {
+  padding: 6px 10px;
+  font-size: 13px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-right: 6px;
+  background-color: #3b82f6;
+  color: white;
+  transition: background-color 0.2s;
+}
+button:hover {
+  background-color: #2563eb;
+}
+
+td button {
+  margin: 0 4px;
+  min-width: 48px;
+  padding: 5px 8px;
+}
+
+/* 과목 수정 영역 감싸기 */
+.subject-edit-form {
+  background: #f9fafb;
+  padding: 20px;
+  border-radius: 8px;
+  margin-top: 20px;
+  border: 1px solid #e5e7eb;
+}
+
+/* 입력 필드 정렬 */
+.subject-edit-form label {
+  display: block;
+  margin-bottom: 12px;
+  font-size: 14px;
+  color: #374151;
+}
+
+/* 버튼 정렬 */
+.action-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+
+
+
+/* 삭제 버튼 (빨간색) */
+button:nth-child(2) {
+  background-color: #ef4444;
+}
+button:nth-child(2):hover {
+  background-color: #dc2626;
+}
+
+/* 구분선 */
+hr {
+  margin: 30px 0;
+  border: none;
+  border-top: 1px solid #ddd;
+}
+
+/* 에러 메시지 */
+p {
+  font-size: 14px;
+  color: #ef4444;
+}
+
   </style>
   

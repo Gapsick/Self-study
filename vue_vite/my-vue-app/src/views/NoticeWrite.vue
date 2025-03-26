@@ -51,7 +51,10 @@
         <input id="pin" type="checkbox" v-model="noticeData.is_pinned" />
       </div>
 
+      <div class="button-group">
       <button type="submit" class="submit-btn">작성</button>
+      <button type="button" class="cancel-btn" @click="cancelWrite">취소</button>
+      </div>
     </form>
   </div>
 </template>
@@ -66,7 +69,6 @@ const { noticeData, handleFileUpload: realFileUpload, submitNotice } = useNotice
 const router = useRouter();
 const selectedYear = ref("전체");
 const { subjects, loadSubjects } = useSubjects(selectedYear);
-
 const fileName = ref("");
 
 const handleFileUpload = (e) => {
@@ -90,6 +92,12 @@ watch(selectedYear, async () => {
   await loadSubjects();
   noticeData.value.academic_year = selectedYear.value === "전체" ? null : Number(selectedYear.value);
 });
+
+const cancelWrite = () => {
+  if (confirm("작성을 취소하시겠습니까? 작성한 내용은 저장되지 않습니다.")) {
+    router.push("/notices");
+  }
+};
 
 const submitForm = async () => {
   const success = await submitNotice();
@@ -160,6 +168,28 @@ textarea {
 .submit-btn:hover {
   background-color: #2563eb;
 }
+
+.button-group {
+  display: flex;
+  gap: 12px;
+}
+
+.cancel-btn {
+  background-color: #9ca3af;
+  color: white;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 6px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+  width: 100%;
+}
+
+.cancel-btn:hover {
+  background-color: #6b7280;
+}
+
 
 /* ✅ 파일 업로드 */
 .file-upload-box {

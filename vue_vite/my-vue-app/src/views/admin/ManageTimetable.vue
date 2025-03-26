@@ -1,136 +1,118 @@
 <template>
-    <div style="padding: 16px;">
-      <h2>📅 시간표 관리</h2>
-  
-      <!-- 시간표 목록 테이블 -->
-      <table v-if="timetables.length > 0" border="1" cellpadding="6">
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>subject_id</th>
-            <th>day</th>
-            <th>period</th>
-            <th>professor</th>
-            <th>classroom</th>
-            <th>start_date</th>
-            <th>end_date</th>
-            <th>lecture_period</th>
-            <th>수정 / 삭제</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="item in timetables" :key="item.id">
-            <td>{{ item.id }}</td>
-            <td>{{ item.subject_id }}</td>
-            <td>{{ item.day }}</td>
-            <td>{{ item.period }}</td>
-            <td>{{ item.professor }}</td>
-            <td>{{ item.classroom }}</td>
-            <td>{{ formatDateLocal(item.start_date) }}</td>
-            <td>{{ formatDateLocal(item.end_date) }}</td>
-            <td>{{ item.lecture_period }}</td>
-            <td>
-              <button @click="editTimetable(item)">수정</button>
-              <button @click="deleteTimetable(item.id)">삭제</button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-      <p v-else>등록된 시간표가 없습니다.</p>
-  
-      <!-- 신규 시간표 추가 -->
-      <h3>시간표 추가</h3>
-      <div>
-        <label>과목ID: <input v-model.number="newTimetable.subject_id" /></label><br/>
-        <label>요일(day): <input v-model="newTimetable.day" /></label><br/>
-        <label>교시(period): <input v-model.number="newTimetable.period" /></label><br/>
-        <label>교수명(professor): <input v-model="newTimetable.professor" /></label><br/>
-        <label>강의실(classroom): <input v-model="newTimetable.classroom" /></label><br/>
-        <label>start_date: <input type="date" v-model="newTimetable.start_date" /></label><br/>
-        <label>end_date: <input type="date" v-model="newTimetable.end_date" /></label><br/>
-        <label>lecture_period: <input v-model.number="newTimetable.lecture_period" /></label><br/>
+  <div class="container">
+    <h2>📅 시간표 관리</h2>
+
+    <!-- 시간표 목록 테이블 -->
+    <table v-if="timetables.length > 0">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>과목 ID</th>
+          <th>요일</th>
+          <th>교시</th>
+          <th>교수명</th>
+          <th>강의실</th>
+          <th>시작일</th>
+          <th>종료일</th>
+          <th>강의 기간</th>
+          <th>수정 / 삭제</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr v-for="item in timetables" :key="item.id">
+          <td>{{ item.id }}</td>
+          <td>{{ item.subject_id }}</td>
+          <td>{{ item.day }}</td>
+          <td>{{ item.period }}</td>
+          <td>{{ item.professor }}</td>
+          <td>{{ item.classroom }}</td>
+          <td>{{ formatDateLocal(item.start_date) }}</td>
+          <td>{{ formatDateLocal(item.end_date) }}</td>
+          <td>{{ item.lecture_period }}</td>
+          <td class="action-buttons">
+            <button @click="editTimetable(item)">수정</button>
+            <button @click="deleteTimetable(item.id)">삭제</button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p v-else>등록된 시간표가 없습니다.</p>
+
+    <hr />
+
+    <!-- 신규 시간표 추가 폼 -->
+    <h3>시간표 추가</h3>
+    <div class="form-group">
+      <label>과목 ID:
+        <input v-model.number="newTimetable.subject_id" type="number" />
+      </label>
+      <label>요일:
+        <input v-model="newTimetable.day" type="text" />
+      </label>
+      <label>교시:
+        <input v-model.number="newTimetable.period" type="number" />
+      </label>
+      <label>교수명:
+        <input v-model="newTimetable.professor" type="text" />
+      </label>
+      <label>강의실:
+        <input v-model="newTimetable.classroom" type="text" />
+      </label>
+      <label>시작일:
+        <input v-model="newTimetable.start_date" type="date" />
+      </label>
+      <label>종료일:
+        <input v-model="newTimetable.end_date" type="date" />
+      </label>
+      <label>강의 기간:
+        <input v-model.number="newTimetable.lecture_period" type="number" />
+      </label>
+      <div class="button-group">
         <button @click="addTimetable">등록</button>
       </div>
-  
-      <!-- 수정 폼 -->
-      <div v-if="editMode">
-        <h3>시간표 수정</h3>
-        <div>
-          <label>ID: {{ editForm.id }}</label><br/>
-          <label>과목ID: <input v-model.number="editForm.subject_id" /></label><br/>
-          <label>요일(day): <input v-model="editForm.day" /></label><br/>
-          <label>교시(period): <input v-model.number="editForm.period" /></label><br/>
-          <label>교수명: <input v-model="editForm.professor" /></label><br/>
-          <label>강의실: <input v-model="editForm.classroom" /></label><br/>
-          <label>start_date: <input type="date" v-model="editForm.start_date" /></label><br/>
-          <label>end_date: <input type="date" v-model="editForm.end_date" /></label><br/>
-          <label>lecture_period: <input v-model.number="editForm.lecture_period" /></label><br/>
-        </div>
-        <button @click="updateTimetable">수정 저장</button>
-        <button @click="cancelEdit">취소</button>
-      </div>
-  
-      <hr />
-  
-      <h2>🎉 휴강 관리</h2>
-      <table v-if="holidays.length > 0" border="1" cellpadding="6">
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>holiday_date</th>
-            <th>subject_id</th>
-            <th>day</th>
-            <th>lecture_period</th>
-            <th>period</th>
-            <th>수정 / 삭제</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="h in holidays" :key="h.id">
-            <td>{{ h.id }}</td>
-            <td>{{ formatDateLocal(h.holiday_date) }}</td>
-            <td>{{ h.subject_id }}</td>
-            <td>{{ h.day }}</td>
-            <td>{{ h.lecture_period }}</td>
-            <td>{{ h.period }}</td>
-            <td>
-              <button @click="editHoliday(h)">수정</button>
-              <button @click="deleteHoliday(h.id)">삭제</button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-      <p v-else>등록된 휴강이 없습니다.</p>
-  
-      <!-- 신규 휴강 등록 -->
-      <h3>휴강 추가</h3>
-      <div>
-        <label>holiday_date: <input type="date" v-model="newHoliday.holiday_date" /></label><br/>
-        <label>subject_id: <input v-model.number="newHoliday.subject_id" /></label><br/>
-        <label>day: <input v-model="newHoliday.day" /></label><br/>
-        <label>lecture_period: <input v-model.number="newHoliday.lecture_period" /></label><br/>
-        <label>period: <input v-model.number="newHoliday.period" /></label><br/>
-        <button @click="addHoliday">휴강 등록</button>
-      </div>
-  
-      <!-- 휴강 수정 폼 -->
-      <div v-if="editHolidayMode">
-        <h3>휴강 수정</h3>
-        <div>
-          <label>ID: {{ editHolidayForm.id }}</label><br/>
-          <label>holiday_date: <input type="date" v-model="editHolidayForm.holiday_date" /></label><br/>
-          <label>subject_id: <input v-model.number="editHolidayForm.subject_id" /></label><br/>
-          <label>day: <input v-model="editHolidayForm.day" /></label><br/>
-          <label>lecture_period: <input v-model.number="editHolidayForm.lecture_period" /></label><br/>
-          <label>period: <input v-model.number="editHolidayForm.period" /></label><br/>
-        </div>
-        <button @click="updateHoliday">휴강 수정 저장</button>
-        <button @click="cancelHolidayEdit">취소</button>
-      </div>
-  
-      <p v-if="errorMessage" style="color: red;">{{ errorMessage }}</p>
     </div>
-  </template>
+
+    <hr />
+
+    <!-- 시간표 수정 폼 -->
+    <div v-if="editMode">
+      <h3>시간표 수정</h3>
+      <div class="form-group">
+        <label>ID: {{ editForm.id }}</label>
+        <label>과목 ID:
+          <input v-model.number="editForm.subject_id" type="number" />
+        </label>
+        <label>요일:
+          <input v-model="editForm.day" type="text" />
+        </label>
+        <label>교시:
+          <input v-model.number="editForm.period" type="number" />
+        </label>
+        <label>교수명:
+          <input v-model="editForm.professor" type="text" />
+        </label>
+        <label>강의실:
+          <input v-model="editForm.classroom" type="text" />
+        </label>
+        <label>시작일:
+          <input v-model="editForm.start_date" type="date" />
+        </label>
+        <label>종료일:
+          <input v-model="editForm.end_date" type="date" />
+        </label>
+        <label>강의 기간:
+          <input v-model.number="editForm.lecture_period" type="number" />
+        </label>
+        <div class="button-group">
+          <button @click="updateTimetable">수정 저장</button>
+          <button @click="cancelEdit" class="danger">취소</button>
+        </div>
+      </div>
+    </div>
+
+    <p v-if="errorMessage" class="error-message">{{ errorMessage }}</p>
+  </div>
+</template>
   
   <script setup>
   import { ref, onMounted } from 'vue'
@@ -375,3 +357,108 @@ function formatDateLocal(dateStr) {
   })
   </script>
   
+<style scoped>
+.container {
+  padding: 16px;
+  font-family: 'Noto Sans KR', sans-serif;
+}
+
+h2, h3 {
+  font-size: 18px;
+  font-weight: bold;
+  color: #1f2937;
+  margin: 20px 0 14px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 20px;
+  background-color: #fff;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+th, td {
+  padding: 10px 12px;
+  font-size: 14px;
+  text-align: center;
+  border: 1px solid #e5e7eb;
+  white-space: nowrap;
+}
+
+/* 🔹 공통 입력 폼 스타일 */
+.form-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: flex;
+  flex-direction: column;
+  font-size: 13px;
+  color: #374151;
+  min-width: 140px;
+}
+
+input[type="text"],
+input[type="number"],
+input[type="date"],
+select {
+  padding: 6px 10px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+/* 🔹 버튼 공통 스타일 */
+button {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  margin-right: 6px;
+  transition: background-color 0.2s;
+}
+
+button:hover {
+  opacity: 0.9;
+}
+
+button:not(.danger) {
+  background-color: #3b82f6;
+  color: white;
+}
+
+button.danger {
+  background-color: #ef4444;
+  color: white;
+}
+
+/* 🔹 수정/삭제 버튼 우측 정렬 */
+td.action-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+}
+
+/* 🔹 구분선 */
+hr {
+  border-top: 1px solid #ddd;
+  margin: 30px 0;
+}
+
+/* 🔹 에러 메시지 */
+.error-message {
+  color: #ef4444;
+  font-weight: 500;
+  font-size: 14px;
+}
+
+
+</style>

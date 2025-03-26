@@ -41,6 +41,7 @@ function handleMessage(event) {
 
 // ✅ 로컬 스토리지 저장 함수 추가
 function saveUserData(data) {
+  console.log("🧩 saveUserData 전달받은 data:", data);  // 👈 추가
   const user = {
     name: data.name,
     email: data.email,

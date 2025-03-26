@@ -30,29 +30,39 @@
         </tr>
       </thead>
       <tbody>
-        <tr v-for="notice in filterNotices" :key="notice.id">
-          <td>{{ notice.id }}</td>
-          <td>
-            <router-link :to="`/notices/${notice.id}`" class="notice-title-link">
-              <strong>{{ notice.title }}</strong>
-              <span v-if="notice.is_pinned" class="pin">📌</span>
-            </router-link>
-          </td>
-          <td>{{ notice.academic_year ? `${notice.academic_year}학년` : "전체" }}</td>
-          <td>{{ getSubjectName(notice.subject_id) }}</td>
-          <td>{{ notice.author || "관리자" }}</td>
-          <td>{{ formatDate(notice.created_at) }}</td>
-          <td>{{ notice.views || 0 }}</td>
-        </tr>
-      </tbody>
+        <tr v-for="(notice, index) in paginatedNotices" :key="notice.id">
+        <td>{{ (currentPage - 1) * itemsPerPage + index + 1 }}</td>
+        <td>
+          <router-link :to="`/notices/${notice.id}`" class="notice-title-link">
+            <strong>{{ notice.title }}</strong>
+            <span v-if="notice.is_pinned" class="pin">📌</span>
+          </router-link>
+        </td>
+        <td>{{ notice.academic_year ? `${notice.academic_year}학년` : "전체" }}</td>
+        <td>{{ getSubjectName(notice.subject_id) }}</td>
+        <td>{{ notice.author || "관리자" }}</td>
+        <td>{{ formatDate(notice.created_at) }}</td>
+        <td>{{ notice.views || 0 }}</td>
+      </tr>
+    </tbody>
     </table>
 
     <p v-else class="empty-text">📢 현재 등록된 공지사항이 없습니다.</p>
   </div>
+
+  <div class="pagination">
+  <button @click="currentPage--" :disabled="currentPage === 1"><</button>
+  <span v-for="page in totalPages" :key="page">
+    <button @click="currentPage = page" :class="{ active: currentPage === page }">{{ page }}</button>
+  </span>
+  <button @click="currentPage++" :disabled="currentPage === totalPages">></button>
+</div>
+
+
 </template>
 
 <script setup>
-import { ref, onMounted, watchEffect } from "vue";
+import { ref, onMounted, watchEffect, computed } from "vue";
 import { storeToRefs } from "pinia";
 import { useNoticeStore } from "@/stores/useNoticeStore";
 import { useNoticeFilters } from "@/composables/useNoticeFilters";
@@ -69,11 +79,16 @@ const { searchQuery, selectedYear, selectedSubject, filterNotices } = useNoticeF
 const { subjects } = useSubjects(selectedYear);
 const { isAdmin } = useAuth();
 const isLoading = ref(true);
+// page navigation
+const currentPage = ref(1);
+const itemsPerPage = 10;
+
 
 onMounted(async () => {
   isLoading.value = true;
   try {
     await noticeStore.getNotices();
+    console.log("📦 불러온 공지 목록:", notices.value); // 👈 여기 추가
   } catch (error) {
     console.error("🚨 공지사항 불러오기 실패:", error);
   } finally {
@@ -95,6 +110,20 @@ const getSubjectName = (subjectId) => {
 const goToWritePage = () => {
   router.push("/notices/write");
 };
+
+// pagenavigation 계산 속성
+const paginatedNotices = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage;
+  const end = start + itemsPerPage;
+  return filterNotices.value.slice(start, end);
+});
+
+const totalPages = computed(() => {
+  return Math.ceil(filterNotices.value.length / itemsPerPage);
+});
+
+
+
 </script>
 
 <style scoped>
@@ -184,4 +213,43 @@ const goToWritePage = () => {
   margin-top: 40px;
   font-size: 16px;
 }
+
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  margin-top: 20px;
+  font-family: 'Noto Sans KR', sans-serif;
+}
+
+.pagination button {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%; /* 동글동글 */
+  background-color: #f3f4f6;
+  color: #374151;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.pagination button:hover {
+  background-color: #dbeafe;
+}
+
+.pagination button.active {
+  background-color: #2563eb;
+  color: white;
+  font-weight: bold;
+}
+
+.pagination button:disabled {
+  background-color: #e5e7eb;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+
 </style>
