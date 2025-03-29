@@ -47,6 +47,7 @@ function saveUserData(data) {
     email: data.email,
     role: data.role,
     grade: data.grade || null,
+    specialLecture: data.specialLecture || null
   }
 
   localStorage.setItem('user', JSON.stringify(user))

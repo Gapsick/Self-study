@@ -73,16 +73,34 @@ const googleCallback = async (req, res) => {
     const userInfo = userInfoResponse.data;
     console.log("✅ (googleCallback) Google 사용자 정보:", userInfo);
 
-    // ✅ @g.yju.ac.kr 이메일 검증 추가
-    if (!userInfo.email.endsWith("@g.yju.ac.kr")) {
-      console.log("❌ 유효하지 않은 이메일:", userInfo.email);
+    // ✅ 이메일 변수 정리
+    const email = userInfo.email;
+
+    // ✅ @g.yju.ac.kr 이면 통과
+    const isGyu = email.endsWith("@g.yju.ac.kr");
+
+    // ✅ 그 외는 DB에서 approved_emails에 등록된 이메일인지 확인
+    let isApproved = false;
+
+    if (!isGyu) {
+      const [approvedResults] = await db.promise().query(
+        "SELECT * FROM approved_emails WHERE email = ?",
+        [email]
+      );
+      isApproved = approvedResults.length > 0;
+    }
+
+    // ✅ 둘 다 아니면 거부
+    if (!isGyu && !isApproved) {
+      console.log("❌ 승인되지 않은 외부 이메일:", email);
       return res.send(`
         <script>
-          window.opener.postMessage({ error: "유효한 이메일이 아닙니다." }, "http://localhost:5173");
+          window.opener.postMessage({ error: "승인되지 않은 이메일입니다." }, "http://localhost:5173");
           window.close();
         </script>
       `);
     }
+
 
     // ✅ DB에서 사용자 확인
     const [results] = await db.promise().query("SELECT * FROM users WHERE email = ?", [userInfo.email]);
@@ -151,7 +169,8 @@ const googleCallback = async (req, res) => {
               email: "${user.email}",  // ✅ 이메일 추가
               role: "${user.role || "student"}",
               grade: "${user.grade || ""}",
-              name: "${user.name}"
+              name: "${user.name}",
+              specialLecture: "${user.special_lecture || ""}"
             }, "http://localhost:5173");
             window.close();
           </script>

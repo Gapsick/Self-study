@@ -4,7 +4,7 @@ const db = require("../config/db");
 const getPendingUsers = async (req, res) => {
     try {
       const [results] = await db.promise().query(
-        "SELECT name, email, student_id, phone, grade, is_foreign FROM users WHERE is_verified = 0"
+        "SELECT name, email, student_id, phone, grade, is_foreign, special_lecture FROM users WHERE is_verified = 0"
       );
       res.json(results);
     } catch (err) {
@@ -14,7 +14,7 @@ const getPendingUsers = async (req, res) => {
   
 
 const registerUser = async (req, res) => {
-  const { name, studentId, phone, grade, isForeign, email } = req.body;
+  const { name, studentId, phone, grade, isForeign, email, specialLecture } = req.body;
 
   if (!name || !studentId || !phone || !grade || !email) {
     return res.status(400).json({ message: "❌ 모든 필드를 입력해주세요." });
@@ -28,10 +28,10 @@ const registerUser = async (req, res) => {
     }
 
     const insertQuery = `
-      INSERT INTO users (name, student_id, phone, grade, is_foreign, email, is_verified)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO users (name, student_id, phone, grade, is_foreign, email, special_lecture, is_verified)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `;
-    const values = [name, studentId, phone, grade, isForeign, email, false];
+    const values = [name, studentId, phone, grade, isForeign, email, specialLecture, false];
 
     await db.promise().query(insertQuery, values);
 

@@ -1,5 +1,5 @@
 import { ref, watchEffect } from "vue";
-import { fetchSubjects, fetchSubjectsByYear } from "@/api/subjectApi";
+import { fetchSubjects } from "@/api/subjectApi"; // fetchSubjects만 사용!
 
 export function useSubjects(selectedYear) {
   const subjects = ref([]);
@@ -8,22 +8,17 @@ export function useSubjects(selectedYear) {
     try {
       console.log(`📢 useSubjects - ${selectedYear.value} 과목 로딩 중...`);
 
-      let data;
-      if (selectedYear.value === "전체") {
-        data = await fetchSubjects(); // ✅ 전체 과목 로드
-      } else {
-        data = await fetchSubjectsByYear(selectedYear.value); // ✅ 특정 학년 과목 로드
-      }
-
-      console.log("📢 API 응답 데이터:", data);
+      // 🔹 무조건 전체 과목 가져오기 (정규 + 특강 포함)
+      const data = await fetchSubjects();
 
       subjects.value = Array.isArray(data) ? data : [];
     } catch (error) {
-      console.error(`🚨 ${selectedYear.value} 과목 불러오기 실패:`, error);
+      console.error("🚨 과목 불러오기 실패:", error);
       subjects.value = [];
     }
   };
 
+  // 학년이 바뀔 때마다 과목 새로 불러오기
   watchEffect(() => {
     loadSubjects();
   });

@@ -3,6 +3,11 @@
     <br><br><br><br>
     <h2>{{ selectedDate }} 기준 {{ grade }}학년 시간표</h2>
 
+    <!-- 수업 추가 버튼 (관리자/교수만 보이게) -->
+    <div class="add-class-button" v-if="isAdminOrProfessor">
+      <button @click="openEmptyModal">+ 수업 추가</button>
+    </div>
+
     <div class="controls">
     <input type="date" v-model="selectedDate" @change="onDateChange" />
     <div class="grade-buttons">
@@ -63,6 +68,10 @@ import TimetableModal from '@/components/TimetableModal.vue'
 
 const { timetable, selectedDate, grade, fetchWeekTimetable } = useTimetable()
 
+const user = JSON.parse(localStorage.getItem('user') || '{}')
+const isAdminOrProfessor = user.role === 'admin' || user.role === 'professor'
+
+
 const today = new Date().toISOString().split("T")[0]
 const showModal = ref(false)
 const selectedClass = ref(null)
@@ -84,6 +93,31 @@ function onDateChange() {
 function changeGrade(newGrade) {
   grade.value = newGrade
   fetchWeekTimetable(selectedDate.value)
+}
+
+function openEmptyModal() {
+  const user = JSON.parse(localStorage.getItem('user'));
+
+  if (!user || (user.role !== 'admin' && user.role !== 'professor')) {
+    console.log("❌ 권한 없음");
+    return;
+  }
+
+  console.log("✅ 모달 열기 시도");
+
+  selectedClass.value = {
+    day: 'Monday', // 기본값 설정
+    lecture_period: 1,
+    subject_name: '',
+    professor: '',
+    classroom: '',
+    status: '수업 있음',
+    start_date: selectedDate.value,
+    end_date: selectedDate.value,
+    period: grade.value
+  };
+
+  showModal.value = true;
 }
 
 function openModal(day, period) {
@@ -270,6 +304,25 @@ td > div:nth-child(5) { background-color: #8b5cf6; }
   border-radius: 6px;
 }
 
+.add-class-button {
+  margin-bottom: 16px;
+}
+
+.add-class-button button {
+  background-color: #1d4ed8;
+  color: white;
+  border: none;
+  padding: 8px 14px;
+  font-size: 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.add-class-button button:hover {
+  background-color: #2563eb;
+}
 
 
 </style>

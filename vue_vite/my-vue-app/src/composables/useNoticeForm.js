@@ -2,6 +2,7 @@ import { ref } from "vue";
 import axios from "axios";
 import { getAccessToken, refreshAccessToken } from "@/api/noticeApi";
 import { useRouter } from "vue-router";
+import { postNotice } from "@/api/noticeApi"
 
 const API_BASE_URL = "http://localhost:5000/api"; // ✅ API URL
 
@@ -82,46 +83,86 @@ export function useNoticeForm(initialData = {}) {
   }
 
 // 🔹 공지사항 저장 (작성 & 수정 통합)
-async function submitNotice(isEdit = false, noticeId = null) {
-  const url = isEdit
-    ? `${API_BASE_URL}/notices/${noticeId}`
-    : `${API_BASE_URL}/notices`;
+// async function submitNotice(isEdit = false, noticeId = null) {
+//   const url = isEdit
+//     ? `${API_BASE_URL}/notices/${noticeId}`
+//     : `${API_BASE_URL}/notices`;
 
-  const formData = new FormData();
-  formData.append("title", noticeData.value.title);
-  formData.append("content", noticeData.value.content);
+//   const formData = new FormData();
+//   formData.append("title", noticeData.value.title);
+//   formData.append("content", noticeData.value.content);
   
-  // ✅ academic_year 값 변환 (전체일 경우 null)
-  const academicYear = noticeData.value.academic_year === "전체" ? null : noticeData.value.academic_year;
-  formData.append("academic_year", academicYear);
+//   // ✅ academic_year 값 변환 (전체일 경우 null)
+//   const academicYear = noticeData.value.academic_year === "전체" ? null : noticeData.value.academic_year;
+//   formData.append("academic_year", academicYear);
 
-  formData.append("subject_id", noticeData.value.subject_id || null);
-  formData.append("is_pinned", noticeData.value.is_pinned ? "1" : "0");
+//   formData.append("subject_id", noticeData.value.subject_id || null);
+//   formData.append("is_pinned", noticeData.value.is_pinned ? "1" : "0");
 
-  if (noticeData.value.file) {
-    formData.append("file", noticeData.value.file);
+//   if (noticeData.value.file) {
+//     formData.append("file", noticeData.value.file);
+//   }
+
+//   const user = JSON.parse(localStorage.getItem("user"));
+//   const userName = user?.name || "관리자";
+//   formData.append("author", userName);
+
+//   console.log("🚀 전송할 FormData:", [...formData.entries()]);
+
+//   try {
+//     const response = await fetch(url, {
+//       method: isEdit ? "PUT" : "POST",
+//       body: formData,
+//     });
+
+//     const result = await response.json();
+//     if (!response.ok) throw new Error(result.message);
+//     return true;
+//   } catch (error) {
+//     console.error("❌ 공지사항 업로드 실패:", error);
+//     return false;
+//   }
+// }
+
+//   return { noticeData, handleFileUpload, submitNotice };
+
+  // 🔹 공지사항 작성
+  async function createNotice() {
+    const formData = prepareFormData();
+    return await makeAuthorizedRequest(`${API_BASE_URL}/notices`, "post", formData);
   }
 
-  const user = JSON.parse(localStorage.getItem("user"));
-  const userName = user?.name || "관리자";
-  formData.append("author", userName);
-
-  console.log("🚀 전송할 FormData:", [...formData.entries()]);
-
-  try {
-    const response = await fetch(url, {
-      method: isEdit ? "PUT" : "POST",
-      body: formData,
-    });
-
-    const result = await response.json();
-    if (!response.ok) throw new Error(result.message);
-    return true;
-  } catch (error) {
-    console.error("❌ 공지사항 업로드 실패:", error);
-    return false;
+  // 🔹 공지사항 수정
+  async function updateNotice(noticeId) {
+    const formData = prepareFormData();
+    return await makeAuthorizedRequest(`${API_BASE_URL}/notices/${noticeId}`, "put", formData);
   }
-}
 
-  return { noticeData, handleFileUpload, submitNotice };
+  function prepareFormData() {
+    const formData = new FormData();
+    formData.append("title", noticeData.value.title);
+    formData.append("content", noticeData.value.content);
+    formData.append("category", noticeData.value.category); // ✅ 이 줄 추가
+    formData.append("academic_year", noticeData.value.academic_year === "전체" ? null : noticeData.value.academic_year);
+    formData.append("subject_id", noticeData.value.subject_id || null);
+    formData.append("is_pinned", noticeData.value.is_pinned ? "1" : "0");
+
+    if (noticeData.value.file) {
+      formData.append("file", noticeData.value.file);
+    }
+
+    const user = JSON.parse(localStorage.getItem("user"));
+    const userName = user?.name || "관리자";
+    formData.append("author", userName);
+
+    return formData;
+  }
+
+  return {
+    noticeData,
+    handleFileUpload,
+    createNotice,
+    updateNotice,
+  };
+
 }

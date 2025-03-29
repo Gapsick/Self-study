@@ -1,8 +1,13 @@
 import { ref, computed } from "vue";
-import { useAuth } from "@/composables/useAuth"; // ✅ 유저 정보 가져오기
+import { useAuth } from "@/composables/useAuth";
 
 export function useNoticeFilters(notices) {
-  const { userRole, userGrade } = useAuth(); // ✅ 학년 정보 가져오기
+  const { userRole } = useAuth();
+
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const userGrade = parseInt(user.grade);
+  const userSpecialLecture = user.specialLecture || "";
+
   const searchQuery = ref("");
   const selectedYear = ref("전체");
   const selectedSubject = ref("전체");
@@ -12,41 +17,81 @@ export function useNoticeFilters(notices) {
 
     let filtered = notices.value;
 
-    console.log("📢 현재 userRole:", userRole.value);
-    console.log("📢 현재 userGrade:", userGrade.value);
-    console.log("📢 현재 notices 데이터:", notices.value);
-
-    // ✅ 학생인 경우, 자기 학년 + 공통 공지만 보이도록 수정
     if (userRole.value === "student") {
-      // ✅ 학생인 경우, 전체를 선택하면 자기 학년 + 공통 공지 보이기
       if (selectedYear.value === "전체") {
-        filtered = filtered.filter(
-          (n) =>
-            n.academic_year == userGrade.value || 
-            n.academic_year === null // 공통 공지 포함
-        );
+        // 🔥 학생 + 전체 학년: '전체 대상' 공지들만 보여주고 특강 제외
+        filtered = filtered.filter((n) => {
+          const subject = n.subject || null;
+          const isSpecial = subject?.category === "특강";
+    
+          const isCommon = !n.academic_year || n.academic_year === 0 || n.academic_year === "전체";
+          return isCommon && !isSpecial;
+        });
       } else {
-        // ✅ 특정 학년을 선택한 경우, 해당 학년 공지만 표시
-        filtered = filtered.filter((n) => n.academic_year == selectedYear.value);
-      }
-    } else {
-      // ✅ 관리자의 경우, 전체를 선택하면 모든 공지 표시
-      if (selectedYear.value === "전체") {
-        filtered = notices.value; // 전체 공지 그대로 유지
-      } else {
-        // ✅ 특정 학년을 선택하면 해당 학년의 공지만 표시
-        filtered = filtered.filter((n) => n.academic_year == selectedYear.value);
+        // 🔥 학생 + 특정 학년: 그 학년 정규 과목 + 자신의 특강만
+        filtered = filtered.filter((n) => {
+          const subject = n.subject || null;
+          const isSpecial = subject?.category === "특강";
+          const academicYear = parseInt(n.academic_year);
+          const isMySpecial = isSpecial && subject.name.includes(userSpecialLecture);
+          return academicYear === userGrade || isMySpecial;
+        });
       }
     }
-    
-    
-
-    // ✅ 과목 필터링
-    if (selectedSubject.value !== "전체") {
-      filtered = filtered.filter((n) => n.subject_id == selectedSubject.value);
+     else {
+      // 교수/관리자
+      if (selectedYear.value !== "전체") {
+        const selected = parseInt(selectedYear.value);
+        filtered = filtered.filter((n) => {
+          const academicYear = parseInt(n.academic_year);
+          return academicYear === selected;
+        });
+      } else {
+        // 교수/관리자
+        if (selectedYear.value !== "전체") {
+          const selected = parseInt(selectedYear.value);
+          filtered = filtered.filter((n) => {
+            const academicYear = parseInt(n.academic_year);
+            return academicYear === selected;
+          });
+        } else {
+          // ✅ 관리자 + 전체 학년 → 공통 공지 & 특강 제외
+          filtered = filtered.filter((n) => {
+            const subject = n.subject || null;
+            const isSpecial = subject?.category === "특강";
+      
+            const isCommon = !n.academic_year || n.academic_year === 0;
+            return isCommon && !isSpecial;
+          });
+        }
+      }
     }
 
-    // ✅ 검색 기능
+    // 과목 필터
+    if (String(selectedSubject.value) !== "전체") {
+      if (String(selectedSubject.value).includes("전체")) {
+        const yearFromFilter = selectedYear.value;
+        filtered = filtered.filter((n) => {
+          const year = String(n.academic_year);
+          const subject = n.subject || null;
+          const isGeneral = !n.subject_id || n.subject_id === "" || n.subject_id === null;
+          const isCommon = subject?.name === "공통";
+      
+          return (
+            year === yearFromFilter &&
+            (isGeneral || isCommon)
+          );
+        });
+      }
+      else {
+        // 일반 과목 ID
+        filtered = filtered.filter((n) => n.subject_id == selectedSubject.value);
+      }
+    }
+    // 만약 selectedSubject.value === "전체" 이면 필터 적용 안 함
+
+    
+    // 검색 필터
     if (searchQuery.value.trim() !== "") {
       const query = searchQuery.value.toLowerCase();
       filtered = filtered.filter(
@@ -56,13 +101,16 @@ export function useNoticeFilters(notices) {
       );
     }
 
-    // ✅ 고정된 공지를 맨 위로 정렬
+    // 고정 공지 정렬
     filtered.sort((a, b) => Number(b.is_pinned) - Number(a.is_pinned));
-
-    console.log("📢 최종 필터링된 notices:", filtered); // ✅ 디버깅용
 
     return filtered;
   });
 
-  return { searchQuery, selectedYear, selectedSubject, filterNotices };
+  return {
+    searchQuery,
+    selectedYear,
+    selectedSubject,
+    filterNotices,
+  };
 }

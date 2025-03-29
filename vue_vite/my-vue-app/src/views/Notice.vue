@@ -39,7 +39,7 @@
           </router-link>
         </td>
         <td>{{ notice.academic_year ? `${notice.academic_year}학년` : "전체" }}</td>
-        <td>{{ getSubjectName(notice.subject_id) }}</td>
+        <td>{{ getSubjectName(notice.subject_id, notice.academic_year) }}</td>
         <td>{{ notice.author || "관리자" }}</td>
         <td>{{ formatDate(notice.created_at) }}</td>
         <td>{{ notice.views || 0 }}</td>
@@ -100,11 +100,19 @@ watchEffect(() => {
   isLoading.value = notices.value.length === 0 || subjects.value.length === 0;
 });
 
-const getSubjectName = (subjectId) => {
+const getSubjectName = (subjectId, noticeAcademicYear) => {
   if (!subjectId) return "공통";
   if (!subjects.value || subjects.value.length === 0) return "로딩 중...";
+
   const subject = subjects.value.find((subj) => subj.id == subjectId);
-  return subject ? subject.name : "알 수 없음";
+  if (!subject) return "알 수 없음";
+
+  // academic_year가 0(특강)이면서, 공지가 전체 학년 대상이 아닐 때만 [특강] 표시
+  if (subject.academic_year === 0 && noticeAcademicYear !== "전체") {
+    return `[특강] ${subject.name}`;
+  }
+
+  return subject.name;
 };
 
 const goToWritePage = () => {
