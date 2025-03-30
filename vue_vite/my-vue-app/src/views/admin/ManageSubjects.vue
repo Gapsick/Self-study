@@ -6,17 +6,15 @@
       <table v-if="subjects.length > 0" border="1" cellpadding="6">
         <thead>
           <tr>
-            <th>ID</th>
             <th>과목명</th>
             <th>학년</th>
             <th>수정 / 삭제</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="subject in subjects" :key="subject.id">
-            <td>{{ subject.id }}</td>
+          <tr v-for="subject in sortedSubjects" :key="subject.id">
             <td>{{ subject.name }}</td>
-            <td>{{ subject.academic_year }}</td>
+            <td>{{ subject.academic_year === 0 ? '특강' : subject.academic_year + '학년' }}</td>
             <td>
               <button @click="editSubject(subject)">수정</button>
               <button @click="deleteSubject(subject.id)">삭제</button>
@@ -40,6 +38,7 @@
             <option :value="1">1학년</option>
             <option :value="2">2학년</option>
             <option :value="3">3학년</option>
+            <option :value="0">특강</option>
           </select>
         </label>
   
@@ -60,9 +59,10 @@
       <label>
         학년
         <select v-model.number="editForm.academic_year">
-          <option :value="1">1학년</option>
-          <option :value="2">2학년</option>
-          <option :value="3">3학년</option>
+        <option :value="1">1학년</option>
+        <option :value="2">2학년</option>
+        <option :value="3">3학년</option>
+        <option :value="0">특강</option>
         </select>
       </label>
 
@@ -79,7 +79,7 @@
   </template>
   
   <script setup>
-  import { ref, onMounted } from 'vue'
+  import { ref, computed, onMounted } from 'vue'
   import axios from 'axios'
   
   // 1) 과목 목록 배열
@@ -111,6 +111,16 @@
       errorMessage.value = '과목 목록을 불러오지 못했습니다.'
     }
   }
+
+  const sortedSubjects = computed(() => {
+  return [...subjects.value].sort((a, b) => {
+      // 학년 0은 맨 뒤로
+      if (a.academic_year === 0) return 1;
+      if (b.academic_year === 0) return -1;
+      return a.academic_year - b.academic_year;
+    });
+  });
+
   
   // ✅ (B) 신규 과목 추가
   async function addSubject() {

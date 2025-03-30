@@ -1,231 +1,207 @@
 <template>
-    <div class="modal-overlay">
-      <div class="modal">
-        <h3>시간표 편집</h3>
-        <form @submit.prevent="save">
-          <!-- ✅ 과목 선택 (name 기반) -->
-          <label>과목명:
-            <select v-model="form.subject_name">
-              <option disabled value="">과목 선택</option>
-              <option v-for="s in subjects" :key="s.id" :value="s.name">
-                {{ s.name }}
-              </option>
-            </select>
-          </label><br />
-  
-          <label>교수명: <input v-model="form.professor" /></label><br />
-          <label>강의실: <input v-model="form.classroom" /></label><br />
-  
-          <label>상태:
-            <select v-model="form.status">
-              <option>수업 있음</option>
-              <option>휴강</option>
-            </select>
-          </label><br />
-  
-          <label v-if="form.status === '휴강'">
-            휴강일: <input type="date" v-model="form.holiday_date" />
-            </label>
+  <div class="modal-overlay">
+    <div class="modal">
+      <h3>시간표 추가</h3>
+      <form @submit.prevent="save">
+        <!-- 카테고리 선택 -->
+        <label>카테고리
+          <select v-model="form.category">
+            <option value="정규">정규</option>
+            <option value="특강">특강</option>
+          </select>
+        </label>
 
-            <label v-else>
-            시작일: <input type="date" v-model="form.start_date" />
-            <br>
-            종료일: <input type="date" v-model="form.end_date" />
-            </label>
+        <!-- 요일 선택 -->
+        <label>요일:
+          <select v-model="selectedDay" required>
+            <option disabled value="">요일 선택</option>
+            <option v-for="(eng, kor) in dayMap" :key="kor" :value="kor">
+              {{ kor }}
+            </option>
+          </select>
+        </label>
 
-          <div class="actions">
-            <button type="submit">저장</button>
-            <button type="button" @click="emit('close')">취소</button>
-            <button v-if="form.id" type="button" @click="remove">삭제</button>
-          </div>
-        </form>
-      </div>
+        <!-- 과목 선택 -->
+        <label>과목명
+          <select v-model="form.subject_name" required>
+            <option disabled value="">과목 선택</option>
+            <option v-for="s in filteredSubjects" :key="s.id" :value="s.name">
+              {{ s.name }}
+            </option>
+          </select>
+        </label>
+
+        <label>교수명 <input v-model="form.professor" required /></label>
+        <label>강의실 <input v-model="form.classroom" /></label>
+
+        <label>시작 교시 <input type="number" min="1" max="10" v-model.number="form.start_period" required /></label>
+        <label>종료 교시 <input type="number" min="1" max="10" v-model.number="form.end_period" required /></label>
+
+        <label>시작일 <input type="date" v-model="form.start_date" required /></label>
+        <label>종료일 <input type="date" v-model="form.end_date" required /></label>
+
+        <div class="actions">
+          <button type="submit">저장</button>
+          <button type="button" @click="emit('close')">취소</button>
+        </div>
+      </form>
     </div>
-  </template>
-  
-  <script setup>
-  import { ref, reactive, onMounted } from 'vue'
-  import axios from 'axios'
-  import { useSubjects } from '@/composables/useSubjects'
-  
-  const props = defineProps({
-    editData: Object,
-    grade: Number,
-    date: String
-  })
-  
-  const emit = defineEmits(['close', 'saved'])
-  
-  const form = reactive({
-    subject_name: '',
-    professor: '',
-    classroom: '',
-    status: '수업 있음',
-    start_date: '',
-    end_date: '',
-    holiday_date: '',
-    ...props.editData // 기존 데이터 덮어쓰기
-  })
-  
-  function formatDateLocal(dateStr) {
-    if (!dateStr) return ''
-    const d = new Date(dateStr)
-    if (isNaN(d.getTime())) {
-      console.warn("⛔ 잘못된 날짜 포맷:", dateStr)
-      return ''
-    }
-    return d.toISOString().split('T')[0]
-  }
+  </div>
+</template>
 
-  function getDateOfDayInSameWeek(baseDateStr, dayName) {
-  const base = new Date(baseDateStr)
-  const baseDay = base.getDay()
+<script setup>
+import { reactive, ref, onMounted, computed } from 'vue'
+import axios from 'axios'
+import { useSubjects } from '@/composables/useSubjects'
 
-  const days = {
-    Sunday: 0, Monday: 1, Tuesday: 2, Wednesday: 3,
-    Thursday: 4, Friday: 5, Saturday: 6
-  }
+const props = defineProps({
+  editData: Object,
+  grade: Number,
+  date: String
+})
 
-  const targetDay = days[dayName]
-  const diff = targetDay - baseDay
+const emit = defineEmits(['close', 'saved'])
 
-  const result = new Date(base)
-  result.setDate(base.getDate() + diff)
-
-  return result.toISOString().split('T')[0]
+// ✅ 요일 매핑
+const dayMap = {
+  '월요일': 'Monday',
+  '화요일': 'Tuesday',
+  '수요일': 'Wednesday',
+  '목요일': 'Thursday',
+  '금요일': 'Friday'
 }
-  const oldStatus = ref('');
 
-  onMounted(() => {
-    console.log("📅 props.date 확인:", props.date)
-  
-    // 날짜 정제
-    form.start_date = formatDateLocal(props.editData?.start_date)
-    form.end_date = formatDateLocal(props.editData?.end_date)
+const reverseDayMap = Object.fromEntries(Object.entries(dayMap).map(([k, v]) => [v, k]))
 
-    // 정확하게 휴강일을 계산해서 form에 세팅
-    form.holiday_date = getDateOfDayInSameWeek(props.date, form.day)
+const selectedDay = ref('')
 
-    console.log("🎯 세팅된 holiday_date:", form.holiday_date)
+const user = JSON.parse(localStorage.getItem('user') || '{}')
 
-    oldStatus.value = form.status
+const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
 
-  })
-  
-  // 학년별 과목 로딩
-  const selectedYear = ref(props.grade)
-  const { subjects } = useSubjects(selectedYear)
-  
-  const save = async () => {
+// 기본 form
+const form = reactive({
+  category: '정규',
+  subject_name: '',
+  professor: '',
+  classroom: '',
+  start_period: 1,
+  end_period: 1,
+  start_date: '',
+  end_date: '',
+  day: '',
+  ...props.editData
+})
+
+// 모든 과목 불러오기
+const selectedYear = ref(props.grade)
+const { subjects } = useSubjects(selectedYear)
+
+// 필터링된 과목 목록
+const filteredSubjects = computed(() => {
+  if (form.category === '정규') {
+    return subjects.value.filter(s => s.category === '정규' && s.academic_year === props.grade)
+  } else {
+    return subjects.value.filter(s => 
+      s.category === '특강' &&
+      (user.role === 'admin' || user.role === 'professor' || s.name.includes(user.specialLecture))
+    )
+  }
+})
+
+// 날짜 포맷팅
+function formatDateLocal(dateStr) {
+  if (!dateStr) return ''
+  const d = new Date(dateStr)
+  return isNaN(d) ? '' : d.toISOString().split('T')[0]
+}
+
+onMounted(() => {
+  form.start_date = formatDateLocal(props.editData?.start_date)
+  form.end_date = formatDateLocal(props.editData?.end_date)
+  selectedDay.value = reverseDayMap[props.editData?.day] || ''
+})
+
+// 저장
+const save = async () => {
   const subject = subjects.value.find(s => s.name === form.subject_name)
-  if (!subject) {
-    alert('유효한 과목을 선택해주세요.')
-    return
+  if (!subject) return alert("유효한 과목을 선택해주세요.")
+
+  const payload = {
+    ...form,
+    subject_id: subject.id,
+    day: dayMap[selectedDay.value],  // ✅ 영어로 변환
+    period: props.grade
   }
 
   try {
-    // ✅ [1] 휴강 → 수업 있음 으로 전환된 경우: 기존 휴강 삭제
-    if (oldStatus.value === '휴강' && form.status === '수업 있음') {
-      await axios.delete(`http://localhost:5000/api/holidays`, {
-        data: {
-          subject_id: subject.id,
-          holiday_date: form.holiday_date,
-          day: form.day,
-          lecture_period: form.lecture_period,
-          period: props.grade
-        }
-      })
-      console.log("🚫 기존 휴강 삭제 완료")
+    if (form.id) {
+      await axios.put(`http://localhost:5000/api/timetable/${form.id}`, payload)
+    } else {
+      await axios.post(`http://localhost:5000/api/timetable`, payload)
     }
-
-    // ✅ [2] 현재 상태가 "휴강"인 경우 → 휴강 등록
-    if (form.status === '휴강') {
-      await axios.post('http://localhost:5000/api/holidays', {
-        holiday_date: form.holiday_date,
-        subject_id: subject.id,
-        day: form.day,
-        lecture_period: form.lecture_period,
-        period: props.grade,
-      })
-      alert("✅ 휴강이 등록되었습니다.")
-    } 
-    // ✅ [3] 현재 상태가 "수업 있음"인 경우 → 시간표 저장
-    else {
-      const payload = {
-        ...form,
-        subject_id: subject.id,
-        period: props.grade
-      }
-
-      if (form.id) {
-        await axios.put(`http://localhost:5000/api/timetable/${form.id}`, payload)
-      } else {
-        await axios.post(`http://localhost:5000/api/timetable`, payload)
-      }
-
-      alert("✅ 시간표가 저장되었습니다.")
-    }
-
+    alert("✅ 시간표 저장 완료")
     emit('saved')
     emit('close')
   } catch (err) {
-    alert("❌ 저장에 실패했습니다.")
     console.error(err)
+    alert("❌ 저장 실패")
   }
 }
+</script>
 
-  
-  const remove = async () => {
-    try {
-      if (form.status === '휴강') {
-        const subject = subjects.value.find(s => s.name === form.subject_name)
-        await axios.delete(`http://localhost:5000/api/holidays`, {
-          data: {
-            subject_id: subject.id,
-            holiday_date: form.holiday_date,
-            day: form.day,
-            lecture_period: form.lecture_period,
-            period: props.grade
-          }
-        })
-        alert("🗑 휴강 삭제 완료")
-      } else {
-        await axios.delete(`http://localhost:5000/api/timetable/${form.id}`)
-        alert("🗑 시간표 삭제 완료")
-      }
-      emit('saved')
-      emit('close')
-    } catch (err) {
-      alert("❌ 삭제 실패")
-      console.error(err)
-    }
-  }
-  </script>
-  
-  
-  <style scoped>
-  .modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background: rgba(0, 0, 0, 0.5);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  
-  .modal {
-    background: white;
-    padding: 20px;
-    border-radius: 8px;
-    width: 320px;
-  }
-  
-  .actions {
-    margin-top: 12px;
-    display: flex;
-    justify-content: space-between;
-  }
-  </style>
+<style scoped>
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal {
+  background: white;
+  padding: 20px;
+  border-radius: 10px;
+  width: 360px;
+}
+
+label {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 14px;
+}
+
+input, select {
+  width: 100%;
+  margin-top: 4px;
+  padding: 6px;
+  font-size: 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  box-sizing: border-box;
+}
+
+.actions {
+  margin-top: 20px;
+  display: flex;
+  justify-content: space-between;
+}
+
+button {
+  background: #2563eb;
+  color: white;
+  padding: 8px 14px;
+  border-radius: 6px;
+  border: none;
+  font-weight: 500;
+  cursor: pointer;
+}
+button:hover {
+  background: #1d4ed8;
+}
+</style>

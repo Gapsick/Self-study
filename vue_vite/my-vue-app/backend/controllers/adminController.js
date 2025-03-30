@@ -72,9 +72,9 @@ const getSubjects = async (req, res) => {
 // ✅ 과목 추가
 const createSubject = async (req, res) => {
   const { name, academic_year } = req.body;
-  if (!name || !academic_year) {
+  if (!name || academic_year === undefined || academic_year === null) {
     return res.status(400).json({ message: "❌ 과목명과 학년을 입력해주세요." });
-  }
+  }  
 
   try {
     await db.promise().query(
@@ -93,9 +93,9 @@ const updateSubject = async (req, res) => {
   const { id } = req.params;
   const { name, academic_year } = req.body;
 
-  if (!name || !academic_year) {
+  if (!name || academic_year === undefined || academic_year === null) {
     return res.status(400).json({ message: "❌ 과목명과 학년을 입력해주세요." });
-  }
+  }  
 
   try {
     const [result] = await db.promise().query(

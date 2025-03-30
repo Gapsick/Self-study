@@ -3,20 +3,19 @@
     <br><br><br><br>
     <h2>{{ selectedDate }} 기준 {{ grade }}학년 시간표</h2>
 
-    <!-- 수업 추가 버튼 (관리자/교수만 보이게) -->
+    <!-- 수업 추가 버튼 -->
     <div class="add-class-button" v-if="isAdminOrProfessor">
       <button @click="openEmptyModal">+ 수업 추가</button>
     </div>
 
     <div class="controls">
-    <input type="date" v-model="selectedDate" @change="onDateChange" />
-    <div class="grade-buttons">
-      <button @click="changeGrade(1)">1학년</button>
-      <button @click="changeGrade(2)">2학년</button>
-      <button @click="changeGrade(3)">3학년</button>
+      <input type="date" v-model="selectedDate" @change="onDateChange" />
+      <div class="grade-buttons">
+        <button @click="changeGrade(1)">1학년</button>
+        <button @click="changeGrade(2)">2학년</button>
+        <button @click="changeGrade(3)">3학년</button>
+      </div>
     </div>
-    </div>
-
 
     <table class="timetable">
       <thead>
@@ -28,38 +27,61 @@
       <tbody>
         <tr v-for="period in periods" :key="period">
           <td>{{ period }}교시</td>
-          <td v-for="day in days" :key="day + '-' + period" @click="openModal(day, period)">
-            <template v-if="getClassesByDayPeriod(day, period).length">
-              <div v-for="cls in getClassesByDayPeriod(day, period)" :key="cls.id">
-                <span
-                  v-if="cls.status === '휴강'"
-                  class="badge badge-cancel"
-                >🛑 휴강</span>
-                <span
-                  v-else
-                  class="badge badge-normal"
-                >수업 있음</span>
-
+          <td v-for="day in days" :key="day + '-' + period">
+            <div
+              v-for="cls in getClassesForMergedCell(day, period)"
+              :key="cls.id"
+              class="merged-class"
+              :style="{
+                height: `calc(${cls.end_period - cls.start_period + 1} * 90px - ${(cls.end_period - cls.start_period) * 3 + 11}px)`
+              }"
+              @click="openModal(day, period, cls)"
+            >
+              <!-- 정규 수업 카드 -->
+              <template v-if="cls.category === '정규'">
+                <span v-if="cls.status === '휴강'" class="badge badge-cancel">🛑 휴강</span>
+                <span v-else class="badge badge-normal">수업 있음</span>
                 <strong>{{ cls.subject_name }}</strong><br />
-                <small>{{ cls.professor }}</small><br />
-              </div>
-            </template>
+                <small>{{ cls.professor }}</small>
+              </template>
+
+              <!-- 특강 요약 카드 -->
+              <template v-else-if="cls.category === '특강' && cls._summary">
+                <div
+                  class="badge badge-special-summary"
+                  @mouseenter="showTooltip = cls.id"
+                  @mouseleave="showTooltip = null"
+                >
+                  🔶 특강 ({{ cls._count }})
+
+                  <!-- 팝오버 -->
+                  <div
+                    v-if="showTooltip === cls.id"
+                    class="popover"
+                  >
+                    <div v-for="item in cls._originals" :key="item.id" class="popover-item">
+                      <strong>{{ item.subject_name }}</strong><br />
+                      <small>{{ item.professor }}</small>
+                    </div>
+                  </div>
+                </div>
+              </template>
+            </div>
           </td>
         </tr>
       </tbody>
     </table>
+
+    <TimetableModal
+      v-if="showModal"
+      :editData="selectedClass"
+      :grade="grade"
+      :date="selectedDate"
+      @close="closeModal"
+      @saved="onSaved"
+    />
   </div>
-
-  <TimetableModal
-    v-if="showModal"
-    :editData="selectedClass"
-    :grade="grade"
-    :date="selectedDate"
-    @close="closeModal"
-    @saved="onSaved"
-  />
 </template>
-
 
 <script setup>
 import { ref, onMounted } from 'vue'
@@ -71,19 +93,48 @@ const { timetable, selectedDate, grade, fetchWeekTimetable } = useTimetable()
 const user = JSON.parse(localStorage.getItem('user') || '{}')
 const isAdminOrProfessor = user.role === 'admin' || user.role === 'professor'
 
-
 const today = new Date().toISOString().split("T")[0]
 const showModal = ref(false)
 const selectedClass = ref(null)
 
+const showTooltip = ref(null)
+
 const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
 const periods = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 
-function getClassesByDayPeriod(day, lecturePeriod) {
-  const classes = timetable.value[day]
-  if (!classes) return []
+function getClassesForMergedCell(day, period) {
+  const classes = timetable.value[day] || []
 
-  return classes.filter(cls => Number(cls.lecture_period) === Number(lecturePeriod))
+  // ✅ 현재 교시에 포함된 수업들 추출 (start ~ end 사이)
+  const active = classes.filter(cls =>
+    cls.start_period <= period && cls.end_period >= period
+  )
+
+  // ✅ 시작 교시에만 카드 생성
+  const startOnly = active.filter(cls => cls.start_period === period)
+
+  // ✅ 특강 요약 카드 처리 (동일 교시에 특강 여러 개 있을 경우)
+  const specials = startOnly.filter(c => c.category === '특강')
+  const regulars = startOnly.filter(c => c.category !== '특강')
+
+  if (specials.length > 1) {
+  const tooltip = specials.map(c => `${c.subject_name} - ${c.professor}`).join('\n')
+  regulars.push({
+    id: 'special-summary-' + day + '-' + period,
+    category: '특강',
+    _summary: true,
+    _tooltip: tooltip,
+    _count: specials.length,
+    _originals: specials, // ✅ 빠져있던 핵심
+    start_period: period,
+    end_period: period
+  })
+}
+ else {
+    regulars.push(...specials)
+  }
+
+  return regulars
 }
 
 function onDateChange() {
@@ -96,18 +147,11 @@ function changeGrade(newGrade) {
 }
 
 function openEmptyModal() {
-  const user = JSON.parse(localStorage.getItem('user'));
-
-  if (!user || (user.role !== 'admin' && user.role !== 'professor')) {
-    console.log("❌ 권한 없음");
-    return;
-  }
-
-  console.log("✅ 모달 열기 시도");
-
+  if (!isAdminOrProfessor) return
   selectedClass.value = {
-    day: 'Monday', // 기본값 설정
-    lecture_period: 1,
+    day: 'Monday',
+    start_period: 1,
+    end_period: 1,
     subject_name: '',
     professor: '',
     classroom: '',
@@ -115,29 +159,25 @@ function openEmptyModal() {
     start_date: selectedDate.value,
     end_date: selectedDate.value,
     period: grade.value
-  };
-
-  showModal.value = true;
+  }
+  showModal.value = true
 }
 
-function openModal(day, period) {
-  const user = JSON.parse(localStorage.getItem('user'))
-  
-  if (!user || (user.role !== 'admin' && user.role !== 'professor')) {
-    // 학생이거나, 로그인 정보 없으면 모달 열지 않음
-    return
-  }
-  const classes = getClassesByDayPeriod(day, period)  // ✅ 수정!
-  selectedClass.value = classes.length > 0 ? classes[0] : {
+function openModal(day, period, cls) {
+  if (!isAdminOrProfessor) return
+  if (cls._summary) return  // 특강 요약카드는 클릭 안되게 처리
+
+  selectedClass.value = cls || {
     day,
-    lecture_period: period,
+    start_period: period,
+    end_period: period,
     subject_name: '',
     professor: '',
     classroom: '',
     status: '수업 있음',
     start_date: selectedDate.value,
     end_date: selectedDate.value,
-    period: grade.value  // 학년 정보
+    period: grade.value
   }
   showModal.value = true
 }
@@ -147,10 +187,9 @@ function closeModal() {
 }
 
 function onSaved() {
-  fetchWeekTimetable(selectedDate.value) // 다시 시간표 로딩
+  fetchWeekTimetable(selectedDate.value)
   showModal.value = false
 }
-
 
 onMounted(() => {
   selectedDate.value = today
@@ -159,21 +198,18 @@ onMounted(() => {
 </script>
 
 <style scoped>
+/* 기존 스타일 유지하면서 특강 요약 추가 */
 .container {
   max-width: 1100px;
   margin: 0 auto;
   padding: 0 16px;
   font-family: 'Noto Sans KR', sans-serif;
 }
-
-/* 제목 스타일 */
 h2 {
   font-size: 18px;
   margin-bottom: 10px;
   color: #1f2937;
 }
-
-/* 버튼 */
 .grade-buttons {
   display: flex;
   gap: 8px;
@@ -192,102 +228,6 @@ h2 {
 .grade-buttons button:hover {
   background-color: #e5e7eb;
 }
-
-/* 테이블 */
-table.timetable {
-  width: 100%;
-  border-collapse: collapse;
-  table-layout: fixed;
-  background-color: white;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-/* 헤더 */
-th {
-  background-color: #f3f4f6;
-  color: #4b5563;
-  font-size: 13px;
-  font-weight: 600;
-  padding: 10px;
-  border: 1px solid #e5e7eb;
-}
-
-/* 셀 */
-td {
-  height: 95px; /* 고정 높이 */
-  padding: 0;
-  text-align: center;
-  border: 1px solid #e5e7eb;
-  vertical-align: middle;
-  position: relative;
-}
-
-/* 수업 카드 */
-td > div {
-  margin: auto;
-  padding: 5px 12px 10px 12px;
-  font-size: 13px;
-  line-height: 1.5;
-  background-color: #3b82f6;
-  color: white;
-  border-radius: 8px;
-  width: 82%;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-  text-align: left;
-  position: relative;
-  height: 80%;
-}
-
-/* 과목명 */
-td > div strong {
-  font-size: 13.5px;
-  font-weight: 700;
-  margin-bottom: 2px;
-  display: block;
-}
-
-/* 교수명 */
-td > div small {
-  font-size: 12px;
-  color: #e0f2fe;
-}
-
-/* 상태 표시 */
-.badge {
-  position: absolute;
-  top: 7px;
-  right: 8px;
-  font-size: 11.5px;
-  padding: 3px 7px;
-  border-radius: 12px;
-  font-weight: 600;
-}
-
-
-.badge-cancel {
-  background-color: #fee2e2;
-  color: #b91c1c;
-}
-
-.badge-normal {
-  background-color: #dbeafe;
-  color: #1e40af;
-}
-
-
-.text-red {
-  color: #fecaca;
-}
-
-/* 다중 수업 색상 다르게 */
-td > div:nth-child(1) { background-color: #3b82f6; }
-td > div:nth-child(2) { background-color: #10b981; }
-td > div:nth-child(3) { background-color: #f59e0b; }
-td > div:nth-child(4) { background-color: #ef4444; }
-td > div:nth-child(5) { background-color: #8b5cf6; }
-
 .controls {
   display: flex;
   align-items: center;
@@ -296,18 +236,15 @@ td > div:nth-child(5) { background-color: #8b5cf6; }
   gap: 12px;
   flex-wrap: wrap;
 }
-
 .controls input[type="date"] {
   padding: 6px 10px;
   font-size: 14px;
   border: 1px solid #d1d5db;
   border-radius: 6px;
 }
-
 .add-class-button {
   margin-bottom: 16px;
 }
-
 .add-class-button button {
   background-color: #1d4ed8;
   color: white;
@@ -319,10 +256,125 @@ td > div:nth-child(5) { background-color: #8b5cf6; }
   font-weight: 500;
   transition: background-color 0.2s;
 }
-
 .add-class-button button:hover {
   background-color: #2563eb;
 }
+.timetable {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  background-color: white;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  border-radius: 8px;
+  overflow: hidden;
+}
+th {
+  background-color: #f3f4f6;
+  color: #4b5563;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 10px;
+  border: 1px solid #e5e7eb;
+}
+td {
+  position: relative;
+  height: 90px;
+  padding: 0;
+  text-align: center;
+  border: 1px solid #e5e7eb;
+  vertical-align: top;
+}
+.merged-class {
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 90%;
+  padding: 26px 12px 16px 12px;
+  font-size: 10px;
+  line-height: 1.0;
+  background-color: #3b82f6;
+  color: white;
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  text-align: left;
+  z-index: 1;
+  box-sizing: border-box;
+}
+.merged-class strong {
+  font-size: 13.5px;
+  font-weight: 700;
+  margin-top: 8px;
+  margin-bottom: 2px;
+  display: block;
+}
+.merged-class small {
+  font-size: 12px;
+  color: #e0f2fe;
+}
+.badge {
+  position: absolute;
+  top: 6px;
+  left: 10px;
+  font-size: 11.5px;
+  padding: 3px 7px;
+  border-radius: 999px;
+  font-weight: 600;
+  z-index: 3;
+}
+.badge-cancel {
+  background-color: #fee2e2;
+  color: #b91c1c;
+}
+.badge-normal {
+  background-color: #dbeafe;
+  color: #1e40af;
+}
+.badge-special-summary {
+  background-color: #f97316;
+  color: white;
+  font-weight: 700;
+  text-align: center;
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: 13px;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  cursor: default;
+}
 
+.popover {
+  position: absolute;
+  top: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: white;
+  color: #111;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  padding: 10px 12px;
+  z-index: 10;
+  white-space: nowrap;
+  width: max-content;
+  min-width: 120px;
+}
+
+.popover-item {
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+
+.popover-item small {
+  font-size: 12px;
+  color: #374151; /* or #6b7280 */
+  font-weight: 400;
+}
+
+.popover-item:last-child {
+  margin-bottom: 0;
+}
 
 </style>
