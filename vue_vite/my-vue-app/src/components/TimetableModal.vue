@@ -40,9 +40,25 @@
         <label>시작일 <input type="date" v-model="form.start_date" required /></label>
         <label>종료일 <input type="date" v-model="form.end_date" required /></label>
 
+        <!-- 휴강 설정 (수정 모드에서만 노출) -->
+        <div v-if="form.id">
+          <label>휴강 설정</label>
+          <div class="switch-row">
+            <input type="checkbox" id="toggleSwitch" class="switch-input" v-model="isAbsent" />
+            <label for="toggleSwitch" class="switch"></label>
+            <span class="label-text">{{ isAbsent ? '❌ 휴강' : '✅ 수업 있음' }}</span>
+          </div>
+        </div>
+
+        <!-- 저장 / 취소 -->
         <div class="actions">
           <button type="submit">저장</button>
-          <button type="button" @click="emit('close')">취소</button>
+          <button type="button" class="cancel" @click="emit('close')">취소</button>
+        </div>
+
+        <!-- 삭제 -->
+        <div class="delete-wrapper" v-if="form.id">
+          <button type="button" class="delete" @click="remove">🗑 삭제</button>
         </div>
       </form>
     </div>
@@ -50,7 +66,7 @@
 </template>
 
 <script setup>
-import { reactive, ref, onMounted, computed } from 'vue'
+import { reactive, ref, onMounted, computed, watch } from 'vue'
 import axios from 'axios'
 import { useSubjects } from '@/composables/useSubjects'
 
@@ -59,10 +75,8 @@ const props = defineProps({
   grade: Number,
   date: String
 })
-
 const emit = defineEmits(['close', 'saved'])
 
-// ✅ 요일 매핑
 const dayMap = {
   '월요일': 'Monday',
   '화요일': 'Tuesday',
@@ -70,16 +84,11 @@ const dayMap = {
   '목요일': 'Thursday',
   '금요일': 'Friday'
 }
-
 const reverseDayMap = Object.fromEntries(Object.entries(dayMap).map(([k, v]) => [v, k]))
 
 const selectedDay = ref('')
-
 const user = JSON.parse(localStorage.getItem('user') || '{}')
 
-const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
-
-// 기본 form
 const form = reactive({
   category: '정규',
   subject_name: '',
@@ -90,47 +99,50 @@ const form = reactive({
   start_date: '',
   end_date: '',
   day: '',
+  status: '수업 있음',
   ...props.editData
 })
 
-// 모든 과목 불러오기
 const selectedYear = ref(props.grade)
 const { subjects } = useSubjects(selectedYear)
 
-// 필터링된 과목 목록
 const filteredSubjects = computed(() => {
   if (form.category === '정규') {
     return subjects.value.filter(s => s.category === '정규' && s.academic_year === props.grade)
   } else {
-    return subjects.value.filter(s => 
+    return subjects.value.filter(s =>
       s.category === '특강' &&
       (user.role === 'admin' || user.role === 'professor' || s.name.includes(user.specialLecture))
     )
   }
 })
 
-// 날짜 포맷팅
 function formatDateLocal(dateStr) {
   if (!dateStr) return ''
   const d = new Date(dateStr)
   return isNaN(d) ? '' : d.toISOString().split('T')[0]
 }
 
+const isAbsent = ref(false)
+watch(isAbsent, val => {
+  form.status = val ? '휴강' : '수업 있음'
+})
+
 onMounted(() => {
   form.start_date = formatDateLocal(props.editData?.start_date)
   form.end_date = formatDateLocal(props.editData?.end_date)
   selectedDay.value = reverseDayMap[props.editData?.day] || ''
+  isAbsent.value = form.status === '휴강'
 })
 
-// 저장
-const save = async () => {
+async function save() {
   const subject = subjects.value.find(s => s.name === form.subject_name)
-  if (!subject) return alert("유효한 과목을 선택해주세요.")
+  if (!subject) return alert('유효한 과목을 선택해주세요.')
 
   const payload = {
     ...form,
     subject_id: subject.id,
-    day: dayMap[selectedDay.value],  // ✅ 영어로 변환
+    day: dayMap[selectedDay.value],
     period: props.grade
   }
 
@@ -140,12 +152,25 @@ const save = async () => {
     } else {
       await axios.post(`http://localhost:5000/api/timetable`, payload)
     }
-    alert("✅ 시간표 저장 완료")
+    alert('✅ 시간표 저장 완료')
     emit('saved')
     emit('close')
   } catch (err) {
     console.error(err)
-    alert("❌ 저장 실패")
+    alert('❌ 저장 실패')
+  }
+}
+
+async function remove() {
+  if (!confirm('정말 삭제하시겠습니까?')) return
+  try {
+    await axios.delete(`http://localhost:5000/api/timetable/${form.id}`)
+    alert('🗑 삭제 완료')
+    emit('saved')
+    emit('close')
+  } catch (err) {
+    console.error(err)
+    alert('❌ 삭제 실패')
   }
 }
 </script>
@@ -162,20 +187,17 @@ const save = async () => {
   justify-content: center;
   z-index: 1000;
 }
-
 .modal {
   background: white;
   padding: 20px;
   border-radius: 10px;
   width: 360px;
 }
-
 label {
   display: block;
   margin-bottom: 10px;
   font-size: 14px;
 }
-
 input, select {
   width: 100%;
   margin-top: 4px;
@@ -186,22 +208,117 @@ input, select {
   box-sizing: border-box;
 }
 
-.actions {
-  margin-top: 20px;
+.absence-toggle {
+  margin-top: 12px;
+  margin-bottom: 8px;
+  text-align: left;
+}
+.absence-label {
   display: flex;
-  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  font-weight: 500;
+  font-size: 14px;
 }
 
-button {
-  background: #2563eb;
-  color: white;
-  padding: 8px 14px;
+/* Switch 스타일 */
+.switch-input {
+  display: none;
+}
+.switch {
+  position: relative;
+  width: 40px;
+  height: 22px;
+  background-color: #d1d5db;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.switch-row {
+  display: flex;
+  align-items: center; /* 이미 있을 것 */
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.label-text {
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+  line-height: 1;
+  position: relative;
+  top: -5px;  /* ❗살짝 위로 올려줌 */
+}
+
+.switch::before {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  background-color: white;
+  border-radius: 50%;
+  transition: transform 0.3s;
+}
+.switch-input:checked + .switch {
+  background-color: #2563eb;
+}
+.switch-input:checked + .switch::before {
+  transform: translateX(18px);
+}
+
+.label-text {
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.actions {
+  margin-top: 16px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.actions button {
+  flex: 1;
+  padding: 8px 12px;
+  font-weight: 500;
   border-radius: 6px;
   border: none;
-  font-weight: 500;
+  font-size: 14px;
   cursor: pointer;
 }
+button.cancel {
+  background-color: #e5e7eb;
+  color: #374151;
+}
+button.cancel:hover {
+  background-color: #d1d5db;
+}
+button {
+  background-color: #2563eb;
+  color: white;
+}
 button:hover {
-  background: #1d4ed8;
+  background-color: #1d4ed8;
+}
+
+.delete-wrapper {
+  margin-top: 14px;
+  text-align: center;
+}
+.delete-wrapper .delete {
+  background-color: #ef4444;
+  color: white;
+  padding: 8px 20px;
+  border-radius: 6px;
+  border: none;
+  width: 100%;
+  font-weight: 500;
+}
+.delete-wrapper .delete:hover {
+  background-color: #dc2626;
 }
 </style>

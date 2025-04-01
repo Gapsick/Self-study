@@ -161,8 +161,11 @@ const periods = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 function getClassesByDayPeriod(day, period) {
   const classes = finalTimetable.value[day]
   if (!classes) return []
-  return classes.filter(cls => Number(cls.lecture_period) === Number(period))
+  return classes.filter(cls =>
+    Number(cls.start_period) <= Number(period) && Number(cls.end_period) >= Number(period)
+  )
 }
+
 
 const finalTimetable = computed(() => {
   // 학생이면 단일 timetable, 관리자/교수면 merged
@@ -222,10 +225,17 @@ onMounted(async () => {
   // (4) 오늘 수업
   const todayDay = new Date().toLocaleDateString('en-US', { weekday: 'long' })
   const todayClasses = finalTimetable.value[todayDay] || []
-  todayTimetable.value = todayClasses.map(cls => ({
-    period: cls.lecture_period,
+  todayTimetable.value = todayClasses.map(cls => {
+  const periodText = cls.start_period === cls.end_period
+    ? `${cls.start_period}`
+    : `${cls.start_period}교시 ~ ${cls.end_period}`
+
+  return {
+    period: periodText,
     subject: cls.subject_name
-  }))
+  }
+})
+
 })
 </script>
 

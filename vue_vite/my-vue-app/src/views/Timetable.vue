@@ -27,7 +27,18 @@
       <tbody>
         <tr v-for="period in periods" :key="period">
           <td>{{ period }}교시</td>
-          <td v-for="day in days" :key="day + '-' + period">
+          <td
+            v-for="day in days"
+            :key="day + '-' + period"
+            @mousedown="startDrag(day, period)"
+            @mouseenter="dragOver(day, period)"
+            @mouseup="endDrag"
+            @click="onEmptyCellClick(day, period)"
+            :class="{
+              highlighted: selectedRange.some(r => r.day === day && r.period === period),
+              hoverable: getClassesForMergedCell(day, period).length === 0
+            }"
+          >
             <div
               v-for="cls in getClassesForMergedCell(day, period)"
               :key="cls.id"
@@ -84,7 +95,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useTimetable } from '@/composables/useTimetable'
 import TimetableModal from '@/components/TimetableModal.vue'
 
@@ -145,6 +156,110 @@ function changeGrade(newGrade) {
   grade.value = newGrade
   fetchWeekTimetable(selectedDate.value)
 }
+
+// 드레그 함수
+const dragStart = ref(null)
+const dragEnd = ref(null)
+
+function startDrag(day, period) {
+  if (!isAdminOrProfessor) return
+  dragStart.value = { day, period }
+  dragEnd.value = null
+
+  // 전역 mouseup 리스너 등록
+  window.addEventListener('mouseup', handleGlobalMouseUp)
+}
+
+function handleGlobalMouseUp() {
+  endDrag()
+  window.removeEventListener('mouseup', handleGlobalMouseUp)
+}
+
+function dragOver(day, period) {
+  if (!dragStart.value) return
+  if (day === dragStart.value.day) {
+    dragEnd.value = { day, period }
+  }
+}
+
+function endDrag() {
+  if (!dragStart.value || !dragEnd.value) {
+    dragStart.value = null
+    dragEnd.value = null
+    return
+  }
+
+  const start = Math.min(dragStart.value.period, dragEnd.value.period)
+  const end = Math.max(dragStart.value.period, dragEnd.value.period)
+  const day = dragStart.value.day
+
+  const existing = getClassesForMergedCell(day, start).length > 0
+  if (existing) {
+    dragStart.value = null
+    dragEnd.value = null
+    return
+  }
+
+  selectedClass.value = {
+    day,
+    start_period: start,
+    end_period: end,
+    subject_name: '',
+    professor: '',
+    classroom: '',
+    status: '수업 있음',
+    start_date: selectedDate.value,
+    end_date: selectedDate.value,
+    period: grade.value
+  }
+
+  showModal.value = true
+  dragStart.value = null
+  dragEnd.value = null
+}
+
+// 클릭 함수
+function onEmptyCellClick(day, period) {
+  if (!isAdminOrProfessor) return
+
+  // 이미 수업 있는 셀은 무시
+  const existing = getClassesForMergedCell(day, period).length > 0
+  if (existing) return
+
+  selectedClass.value = {
+    day,
+    start_period: period,
+    end_period: period,
+    subject_name: '',
+    professor: '',
+    classroom: '',
+    status: '수업 있음',
+    start_date: selectedDate.value,
+    end_date: selectedDate.value,
+    period: grade.value
+  }
+
+  showModal.value = true
+}
+
+
+
+const selectedRange = computed(() => {
+  if (!dragStart.value || !dragEnd.value) return []
+
+  const startPeriod = Math.min(dragStart.value.period, dragEnd.value.period)
+  const endPeriod = Math.max(dragStart.value.period, dragEnd.value.period)
+
+  // ✅ 같은 요일에서만 작동하게 제한
+  if (dragStart.value.day !== dragEnd.value.day) return []
+
+  return Array.from({ length: endPeriod - startPeriod + 1 }, (_, i) => ({
+    day: dragStart.value.day,
+    period: startPeriod + i
+  }))
+})
+
+
 
 function openEmptyModal() {
   if (!isAdminOrProfessor) return
@@ -259,7 +374,16 @@ h2 {
 .add-class-button button:hover {
   background-color: #2563eb;
 }
+
+.highlighted {
+  background-color: #dbeafe !important; /* 연한 파란색 */
+}
+
 .timetable {
+  user-select: none; /* 드래그 시 텍스트 선택 방지 */
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
   width: 100%;
   border-collapse: collapse;
   table-layout: fixed;
@@ -376,5 +500,11 @@ td {
 .popover-item:last-child {
   margin-bottom: 0;
 }
+
+.hoverable:hover {
+  background-color: #eff6ff; /* 연한 하늘색 */
+  cursor: pointer;
+}
+
 
 </style>
