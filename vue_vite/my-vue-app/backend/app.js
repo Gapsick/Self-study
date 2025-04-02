@@ -60,7 +60,7 @@ app.use("/api/user", userRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/notices", noticeRoutes);
 app.use("/api/subjects", subjectRoutes);
-app.use("/api/timetable", timetableRoutes);
+app.use("/api", timetableRoutes);
 app.use("/api/holidays", holidayRoutes);
 
 // ✅ 서버 실행

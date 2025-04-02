@@ -1,14 +1,19 @@
+<!-- 수정된 Timetable.vue -->
 <template>
   <div class="container">
     <br><br><br><br>
-    <h2>{{ selectedDate }} 기준 {{ grade }}학년 시간표</h2>
+    <h2 v-if="isAdminOrProfessor">
+      전체 시간표 (관리자용)
+    </h2>
+    <h2 v-else>
+      나의 시간표 ({{ user.special_lecture }} - {{ user.class_group }}반)
+    </h2>
 
-    <!-- 수업 추가 버튼 -->
     <div class="add-class-button" v-if="isAdminOrProfessor">
       <button @click="openEmptyModal">+ 수업 추가</button>
     </div>
 
-    <div class="controls">
+    <div class="controls" v-if="isAdminOrProfessor">
       <input type="date" v-model="selectedDate" @change="onDateChange" />
       <div class="grade-buttons">
         <button @click="changeGrade(1)">1학년</button>
@@ -17,6 +22,7 @@
       </div>
     </div>
 
+    <!-- 요일별 시간표 테이블 -->
     <table class="timetable">
       <thead>
         <tr>
@@ -48,15 +54,12 @@
               }"
               @click="openModal(day, period, cls)"
             >
-              <!-- 정규 수업 카드 -->
               <template v-if="cls.category === '정규'">
                 <span v-if="cls.status === '휴강'" class="badge badge-cancel">🛑 휴강</span>
                 <span v-else class="badge badge-normal">수업 있음</span>
                 <strong>{{ cls.subject_name }}</strong><br />
                 <small>{{ cls.professor }}</small>
               </template>
-
-              <!-- 특강 요약 카드 -->
               <template v-else-if="cls.category === '특강' && cls._summary">
                 <div
                   class="badge badge-special-summary"
@@ -65,7 +68,6 @@
                 >
                   🔶 특강 ({{ cls._count }})
 
-                  <!-- 팝오버 -->
                   <div
                     v-if="showTooltip === cls.id"
                     class="popover"
@@ -73,9 +75,16 @@
                     <div v-for="item in cls._originals" :key="item.id" class="popover-item">
                       <strong>{{ item.subject_name }}</strong><br />
                       <small>{{ item.professor }}</small>
+                      <small>{{ item.level }} / {{ item.class_group }}반</small>
                     </div>
                   </div>
                 </div>
+              </template>
+              <template v-else-if="cls.category === '특강'">
+                <span class="badge badge-normal">특강</span>
+                <strong>{{ cls.subject_name }}</strong><br />
+                <small>{{ cls.professor }}</small><br />
+                <small>{{ cls.level }} / {{ cls.class_group }}반</small>
               </template>
             </div>
           </td>

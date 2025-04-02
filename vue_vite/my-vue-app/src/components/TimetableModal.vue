@@ -31,6 +31,17 @@
           </select>
         </label>
 
+        <!-- 특강인 경우 반 선택 -->
+        <div v-if="form.category === '특강'">
+          <label>반(A/B)
+            <select v-model="form.class_group" required>
+              <option value="">(선택 안 함)</option>
+              <option value="A">A반</option>
+              <option value="B">B반</option>
+            </select>
+          </label>
+        </div>
+
         <label>교수명 <input v-model="form.professor" required /></label>
         <label>강의실 <input v-model="form.classroom" /></label>
 
@@ -100,6 +111,7 @@ const form = reactive({
   end_date: '',
   day: '',
   status: '수업 있음',
+  class_group: '',
   ...props.editData
 })
 
