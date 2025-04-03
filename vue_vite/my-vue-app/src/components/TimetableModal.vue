@@ -8,6 +8,7 @@
           <select v-model="form.category">
             <option value="정규">정규</option>
             <option value="특강">특강</option>
+            <option value="한국어">한국어</option>
           </select>
         </label>
 
@@ -31,13 +32,13 @@
           </select>
         </label>
 
-        <!-- 특강인 경우 반 선택 -->
+        <!-- 특강 또는 한국어인 경우 반 선택 -->
         <div v-if="form.category === '특강'">
-          <label>반(A/B)
+          <label>반 (A/B/전체)
             <select v-model="form.class_group" required>
-              <option value="">(선택 안 함)</option>
               <option value="A">A반</option>
               <option value="B">B반</option>
+              <option value="전체">전체</option>
             </select>
           </label>
         </div>
@@ -51,7 +52,7 @@
         <label>시작일 <input type="date" v-model="form.start_date" required /></label>
         <label>종료일 <input type="date" v-model="form.end_date" required /></label>
 
-        <!-- 휴강 설정 (수정 모드에서만 노출) -->
+        <!-- 휴강 설정 -->
         <div v-if="form.id">
           <label>휴강 설정</label>
           <div class="switch-row">
@@ -61,13 +62,12 @@
           </div>
         </div>
 
-        <!-- 저장 / 취소 -->
+        <!-- 저장/취소 -->
         <div class="actions">
           <button type="submit">저장</button>
           <button type="button" class="cancel" @click="emit('close')">취소</button>
         </div>
 
-        <!-- 삭제 -->
         <div class="delete-wrapper" v-if="form.id">
           <button type="button" class="delete" @click="remove">🗑 삭제</button>
         </div>
@@ -100,7 +100,8 @@ const reverseDayMap = Object.fromEntries(Object.entries(dayMap).map(([k, v]) => 
 const selectedDay = ref('')
 const user = JSON.parse(localStorage.getItem('user') || '{}')
 
-const form = reactive({
+const form = reactive({})
+Object.assign(form, {
   category: '정규',
   subject_name: '',
   professor: '',
@@ -111,22 +112,46 @@ const form = reactive({
   end_date: '',
   day: '',
   status: '수업 있음',
-  class_group: '',
-  ...props.editData
+  class_group: null  // ✅ null로 설정
+}, props.editData || {})  // ✅ 수정 시 값 반영
+
+
+const selectedYear = computed(() => {
+  if (form.category === '정규') return props.grade
+  if (form.category === '한국어') return 'KOR'  // <- 한국어는 academic_year = NULL 처리
+  return null  // 특강 등은 전체 받아오기
 })
 
-const selectedYear = ref(props.grade)
 const { subjects } = useSubjects(selectedYear)
 
+
+// 👉 수정된 필터
 const filteredSubjects = computed(() => {
   if (form.category === '정규') {
     return subjects.value.filter(s => s.category === '정규' && s.academic_year === props.grade)
+  } else if (form.category === '특강') {
+    return subjects.value.filter(s => s.category === '특강')
+  } else if (form.category === '한국어') {
+    return subjects.value.filter(s => s.academic_year === null && s.category === '한국어') // ✅ 이 줄 중요!
   } else {
-    return subjects.value.filter(s =>
-      s.category === '특강' &&
-      (user.role === 'admin' || user.role === 'professor' || s.name.includes(user.specialLecture))
-    )
+    return []
   }
+})
+
+
+const isAbsent = ref(false)
+watch(isAbsent, val => {
+  form.status = val ? '휴강' : '수업 있음'
+})
+
+// 날짜 초기화
+onMounted(() => {
+  form.start_date = formatDateLocal(props.editData?.start_date)
+  form.end_date = formatDateLocal(props.editData?.end_date)
+  selectedDay.value = reverseDayMap[props.editData?.day] || ''
+  isAbsent.value = form.status === '휴강'
+  console.log('🧪 props.editData:', props.editData)
+  console.log('🧪 최종 form:', form)
 })
 
 function formatDateLocal(dateStr) {
@@ -135,28 +160,27 @@ function formatDateLocal(dateStr) {
   return isNaN(d) ? '' : d.toISOString().split('T')[0]
 }
 
-const isAbsent = ref(false)
-watch(isAbsent, val => {
-  form.status = val ? '휴강' : '수업 있음'
-})
-
-onMounted(() => {
-  form.start_date = formatDateLocal(props.editData?.start_date)
-  form.end_date = formatDateLocal(props.editData?.end_date)
-  selectedDay.value = reverseDayMap[props.editData?.day] || ''
-  isAbsent.value = form.status === '휴강'
-})
-
 async function save() {
   const subject = subjects.value.find(s => s.name === form.subject_name)
   if (!subject) return alert('유효한 과목을 선택해주세요.')
 
   const payload = {
-    ...form,
     subject_id: subject.id,
+    professor: form.professor,
+    classroom: form.classroom,
     day: dayMap[selectedDay.value],
-    period: props.grade
+    start_period: form.start_period,
+    end_period: form.end_period,
+    start_date: form.start_date,
+    end_date: form.end_date,
+    status: isAbsent.value ? '휴강' : '수업 있음',
+    period: subject.academic_year ?? props.grade,  // academic_year 우선 사용
+    level: subject.level || null,
+    class_group: form.class_group || null,
+    category: subject.category || '정규'
   }
+
+  console.log("🚀 저장 전 payload:", payload)
 
   try {
     if (form.id) {
@@ -168,10 +192,11 @@ async function save() {
     emit('saved')
     emit('close')
   } catch (err) {
-    console.error(err)
+    console.error("❌ 저장 실패:", err)
     alert('❌ 저장 실패')
   }
 }
+
 
 async function remove() {
   if (!confirm('정말 삭제하시겠습니까?')) return

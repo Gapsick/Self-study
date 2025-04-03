@@ -45,7 +45,7 @@
               hoverable: getClassesForMergedCell(day, period).length === 0
             }"
           >
-            <div
+          <div
               v-for="cls in getClassesForMergedCell(day, period)"
               :key="cls.id"
               class="merged-class"
@@ -60,6 +60,7 @@
                 <strong>{{ cls.subject_name }}</strong><br />
                 <small>{{ cls.professor }}</small>
               </template>
+
               <template v-else-if="cls.category === '특강' && cls._summary">
                 <div
                   class="badge badge-special-summary"
@@ -68,11 +69,12 @@
                 >
                   🔶 특강 ({{ cls._count }})
 
-                  <div
-                    v-if="showTooltip === cls.id"
-                    class="popover"
-                  >
-                    <div v-for="item in cls._originals" :key="item.id" class="popover-item">
+                  <div v-if="showTooltip === cls.id" class="popover">
+                    <div
+                      v-for="item in cls._originals"
+                      :key="item.id"
+                      class="popover-item"
+                    >
                       <strong>{{ item.subject_name }}</strong><br />
                       <small>{{ item.professor }}</small>
                       <small>{{ item.level }} / {{ item.class_group }}반</small>
@@ -80,11 +82,19 @@
                   </div>
                 </div>
               </template>
+
               <template v-else-if="cls.category === '특강'">
                 <span class="badge badge-normal">특강</span>
                 <strong>{{ cls.subject_name }}</strong><br />
                 <small>{{ cls.professor }}</small><br />
                 <small>{{ cls.level }} / {{ cls.class_group }}반</small>
+              </template>
+
+              <template v-else-if="cls.category === '한국어'">
+                <span class="badge badge-normal">한국어</span>
+                <strong>{{ cls.subject_name }}</strong><br />
+                <small>{{ cls.professor }}</small><br />
+                <small>{{ cls.level }}</small>
               </template>
             </div>
           </td>

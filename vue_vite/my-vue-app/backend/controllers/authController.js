@@ -170,7 +170,9 @@ const googleCallback = async (req, res) => {
               role: "${user.role || "student"}",
               grade: "${user.grade || ""}",
               name: "${user.name}",
-              specialLecture: "${user.special_lecture || ""}"
+              specialLecture: "${user.special_lecture || ""}",
+              class_group: "${user.class_group || ""}", // ✅ 이것도 있으면 추가
+              id: "${user.id}"  // ✅ 이 줄 추가!
             }, "http://localhost:5173");
             window.close();
           </script>

@@ -10,12 +10,13 @@ router.get("/timetable/:academic_year/date/:date", async (req, res) => {
     const dayOfWeek = new Date(date).toLocaleString("en-US", { weekday: "long" });
 
     const query = `
-      SELECT t.id, t.day, t.start_period, t.end_period, t.professor, t.classroom,
-             DATE_FORMAT(t.start_date, '%Y-%m-%d') AS start_date,
-             DATE_FORMAT(t.end_date, '%Y-%m-%d') AS end_date,
-             s.name AS subject_name, s.category, s.level,
-             s.class_group AS subject_class_group,
-             t.class_group AS timetable_class_group, t.subject_id
+    SELECT t.id, t.day, t.start_period, t.end_period, t.professor, t.classroom,
+          DATE_FORMAT(t.start_date, '%Y-%m-%d') AS start_date,
+          DATE_FORMAT(t.end_date, '%Y-%m-%d') AS end_date,
+          s.name AS subject_name, s.category, s.level,
+          s.class_group AS subject_class_group,
+          t.class_group AS class_group,  -- ✅ 여기를 이렇게
+       t.subject_id
       FROM timetable t
       JOIN subjects s ON t.subject_id = s.id
       WHERE ? BETWEEN t.start_date AND t.end_date
@@ -81,6 +82,53 @@ router.get("/timetable", async (req, res) => {
 });
 
 
+// ✅ 학생 개별 시간표 조회 (grade, specialLecture, class_group 기준)
+router.get("/timetable/user/:id", async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    // 사용자 정보 조회
+    const [userResult] = await db.promise().query(
+      "SELECT grade, special_lecture, class_group, is_foreign FROM users WHERE id = ?",
+      [id]
+    );
+    const user = userResult[0];
+    if (!user) return res.status(404).json({ error: "사용자 정보를 찾을 수 없습니다." });
+
+    const { grade, special_lecture, class_group, is_foreign } = user;
+
+    const query = `
+      SELECT 
+        t.id, t.day, t.start_period, t.end_period, t.professor, t.classroom,
+        DATE_FORMAT(t.start_date, '%Y-%m-%d') AS start_date,
+        DATE_FORMAT(t.end_date, '%Y-%m-%d') AS end_date,
+        s.name AS subject_name, t.subject_id, t.class_group, 
+        s.academic_year, s.category, s.level
+      FROM timetable t
+      JOIN subjects s ON t.subject_id = s.id
+      WHERE 
+        (
+          (s.category = '정규' AND s.academic_year = ?) OR
+          (s.category = '특강' AND s.level = ? AND (t.class_group = ? OR t.class_group = '전체')) OR
+          (s.category = '한국어' AND ? = 1 AND s.level = ?)  -- ✅ 한국어 조건 추가
+        )
+      ORDER BY FIELD(t.day,'Monday','Tuesday','Wednesday','Thursday','Friday'), t.start_period
+    `
+
+
+    const [rows] = await db.promise().query(query, [
+      grade, special_lecture, class_group,
+      is_foreign, special_lecture  // ✅ 한국어 조건에 대응
+    ]);
+    
+
+    res.json(rows);
+  } catch (err) {
+    console.error("❌ 학생 맞춤 시간표 오류:", err);
+    res.status(500).json({ error: "학생 시간표 불러오기 중 오류 발생" });
+  }
+});
+
 
 // ✅ 시간표 추가
 router.post("/timetable", async (req, res) => {
@@ -102,9 +150,10 @@ router.post("/timetable", async (req, res) => {
     `;
     await db.promise().query(insertQuery, [
       subject_id, day, professor, classroom,
-      start_period, end_period, start_date, end_date, class_group || null
+      start_period, end_period, start_date, end_date,
+      class_group?.trim() ? class_group : null
     ]);
-
+    
     res.status(201).json({ message: "시간표 추가 완료" });
   } catch (error) {
     console.error("❌ 시간표 추가 오류:", error);
@@ -133,8 +182,11 @@ router.put("/timetable/:id", async (req, res) => {
     `;
     await db.promise().query(updateQuery, [
       subject_id, professor, classroom,
-      start_period, end_period, start_date, end_date, day, class_group || null, id
+      start_period, end_period, start_date, end_date, day,
+      class_group?.trim() ? class_group : null,
+      id
     ]);
+    
 
     res.json({ message: "시간표 수정 완료" });
   } catch (error) {

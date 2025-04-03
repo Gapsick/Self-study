@@ -41,13 +41,16 @@ function handleMessage(event) {
 
 // ✅ 로컬 스토리지 저장 함수 추가
 function saveUserData(data) {
-  console.log("🧩 saveUserData 전달받은 data:", data);  // 👈 추가
+  console.log("🧩 saveUserData 전달받은 data:", data);
+
   const user = {
+    id: data.id, // ✅ 추가!
     name: data.name,
     email: data.email,
     role: data.role,
     grade: data.grade || null,
-    specialLecture: data.specialLecture || null
+    specialLecture: data.specialLecture || null,
+    class_group: data.class_group || null
   }
 
   localStorage.setItem('user', JSON.stringify(user))
@@ -57,6 +60,7 @@ function saveUserData(data) {
 
   auth.login(data.token, user)  // ✅ Pinia 상태 반영 추가
 }
+
 
 
 // ✅ Google 로그인 팝업 열기

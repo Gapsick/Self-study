@@ -71,15 +71,22 @@ const getSubjects = async (req, res) => {
 
 // ✅ 과목 추가
 const createSubject = async (req, res) => {
-  const { name, academic_year } = req.body;
-  if (!name || academic_year === undefined || academic_year === null) {
+  const { name, academic_year, level, class_group, category } = req.body;
+
+  if (!name || academic_year === undefined) {
     return res.status(400).json({ message: "❌ 과목명과 학년을 입력해주세요." });
-  }  
+  }
 
   try {
     await db.promise().query(
-      "INSERT INTO subjects (name, academic_year) VALUES (?, ?)",
-      [name, academic_year]
+      "INSERT INTO subjects (name, academic_year, level, class_group, category) VALUES (?, ?, ?, ?, ?)",
+      [
+        name,
+        academic_year,
+        level || null,
+        class_group === '' ? null : class_group,
+        category || '정규'  // ✅ category 기본값 설정
+      ]
     );
     res.json({ success: true, message: "✅ 과목이 추가되었습니다." });
   } catch (err) {
@@ -88,21 +95,29 @@ const createSubject = async (req, res) => {
   }
 };
 
+
 // ✅ 과목 수정
 const updateSubject = async (req, res) => {
   const { id } = req.params;
-  const { name, academic_year } = req.body;
+  const { name, academic_year, level, class_group, category } = req.body;
 
-  if (!name || academic_year === undefined || academic_year === null) {
+  if (!name || academic_year === undefined) {
     return res.status(400).json({ message: "❌ 과목명과 학년을 입력해주세요." });
-  }  
+  }
 
   try {
     const [result] = await db.promise().query(
-      "UPDATE subjects SET name=?, academic_year=? WHERE id=?",
-      [name, academic_year, id]
+      "UPDATE subjects SET name = ?, academic_year = ?, level = ?, class_group = ?, category = ? WHERE id = ?",
+      [
+        name,
+        academic_year,
+        level || null,
+        class_group === '' ? null : class_group,
+        category || '정규',
+        id
+      ]
     );
-    
+
     if (result.affectedRows === 0) {
       return res.status(404).json({ message: "❌ 해당 과목을 찾을 수 없습니다." });
     }
@@ -113,6 +128,8 @@ const updateSubject = async (req, res) => {
     res.status(500).json({ message: "❌ 과목 수정 실패", error: err });
   }
 };
+
+
 
 // ✅ 과목 삭제
 const deleteSubject = async (req, res) => {
