@@ -9,8 +9,9 @@ export const getTimetableByGradeAndDate = async (grade, date) => {
 }
 
 // ✅ 사용자 ID 기반 시간표 조회 (학생용)
-export const getTimetableByUserId = async (userId) => {
-  const res = await axios.get(`${BASE}/user/${userId}`)
+// 날짜도 같이 넘기도록 수정 (백엔드 경로와 맞춤)
+export const getTimetableByUserId = async (userId, date) => {
+  const res = await axios.get(`${BASE}/user/${userId}/date/${date}`)
   return res.data
 }
 

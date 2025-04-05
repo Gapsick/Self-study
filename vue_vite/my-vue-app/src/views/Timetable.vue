@@ -1,24 +1,47 @@
-<!-- 수정된 Timetable.vue -->
 <template>
   <div class="container">
     <br><br><br><br>
-    <h2 v-if="isAdminOrProfessor">
-      전체 시간표 (관리자용)
-    </h2>
-    <h2 v-else>
-      나의 시간표 ({{ user.special_lecture }} - {{ user.class_group }}반)
+  
+    <!-- 제목 -->
+    <h2 class="title">
+      {{
+        user.role === 'admin' ? '전체 시간표 (관리자용)' :
+        user.role === 'professor' ? '전체 시간표 (교수용)' :
+        `${user.name}님의 주간 시간표`
+      }}
     </h2>
 
-    <div class="add-class-button" v-if="isAdminOrProfessor">
-      <button @click="openEmptyModal">+ 수업 추가</button>
-    </div>
+    <!-- 상단 제어 영역 -->
+    <div class="header-area">
 
-    <div class="controls" v-if="isAdminOrProfessor">
-      <input type="date" v-model="selectedDate" @change="onDateChange" />
-      <div class="grade-buttons">
-        <button @click="changeGrade(1)">1학년</button>
-        <button @click="changeGrade(2)">2학년</button>
-        <button @click="changeGrade(3)">3학년</button>
+      <!-- 🔹 1번째 줄: 학년 버튼 (오른쪽 정렬) -->
+      <div class="grade-row" v-if="isAdminOrProfessor">
+        <div class="spacer"></div>
+        <div class="grade-toolbar">
+          <button :class="{ highlighted: grade === 1 }" @click="changeGrade(1)">1학년</button>
+          <button :class="{ highlighted: grade === 2 }" @click="changeGrade(2)">2학년</button>
+          <button :class="{ highlighted: grade === 3 }" @click="changeGrade(3)">3학년</button>
+        </div>
+      </div>
+
+      <!-- 🔹 2번째 줄: 날짜 + 주차이동 + 날짜선택기 (한 줄) -->
+      <div class="week-toolbar">
+        <span class="week-range">{{ weekRange }}</span>
+
+        <div class="week-controls">
+          <button @click="goToPreviousWeek">〈</button>
+          <button @click="goToToday">이번주</button>
+          <button @click="goToNextWeek">〉</button>
+
+          <flat-pickr
+            v-model="selectedDate"
+            :config="{ dateFormat: 'Y-m-d', locale: Korean, clickOpens: false }"
+            ref="calendarRef"
+            @click="toggleCalendar"
+            @on-change="onDateChange"
+            class="calendar-picker"
+          />
+        </div>
       </div>
     </div>
 
@@ -32,7 +55,11 @@
       </thead>
       <tbody>
         <tr v-for="period in periods" :key="period">
-          <td>{{ period }}교시</td>
+          <td class="period-cell">
+            {{ period }}교시
+            <br />
+            <small class="time-text">{{ periodTimes[period] }}</small>
+          </td>
           <td
             v-for="day in days"
             :key="day + '-' + period"
@@ -55,43 +82,34 @@
               @click="openModal(day, period, cls)"
             >
               <template v-if="cls.category === '정규'">
-                <span v-if="cls.status === '휴강'" class="badge badge-cancel">🛑 휴강</span>
-                <span v-else class="badge badge-normal">수업 있음</span>
+                <span v-if="cls.is_absent" class="badge badge-cancel">🛑 휴강</span>
+                <span v-else class="badge badge-normal">정규</span>
                 <strong>{{ cls.subject_name }}</strong><br />
                 <small>{{ cls.professor }}</small>
               </template>
 
+              <!-- Timetable.vue 내부 특강 요약 badge 부분 -->
               <template v-else-if="cls.category === '특강' && cls._summary">
                 <div
-                  class="badge badge-special-summary"
-                  @mouseenter="showTooltip = cls.id"
-                  @mouseleave="showTooltip = null"
+                  class="badge badge-overlap"
+                  @click="openModal(day, period, cls)"
                 >
-                  🔶 특강 ({{ cls._count }})
-
-                  <div v-if="showTooltip === cls.id" class="popover">
-                    <div
-                      v-for="item in cls._originals"
-                      :key="item.id"
-                      class="popover-item"
-                    >
-                      <strong>{{ item.subject_name }}</strong><br />
-                      <small>{{ item.professor }}</small>
-                      <small>{{ item.level }} / {{ item.class_group }}반</small>
-                    </div>
-                  </div>
+                  특강 {{ cls._count }}개
                 </div>
               </template>
 
               <template v-else-if="cls.category === '특강'">
-                <span class="badge badge-normal">특강</span>
+                <span v-if="cls.is_absent" class="badge badge-cancel">🛑 휴강</span>
+                <span v-else class="badge badge-normal">특강</span>
                 <strong>{{ cls.subject_name }}</strong><br />
                 <small>{{ cls.professor }}</small><br />
                 <small>{{ cls.level }} / {{ cls.class_group }}반</small>
               </template>
 
+
               <template v-else-if="cls.category === '한국어'">
-                <span class="badge badge-normal">한국어</span>
+                <span v-if="cls.is_absent" class="badge badge-cancel">🛑 휴강</span>
+                <span v-else class="badge badge-normal">한국어</span>
                 <strong>{{ cls.subject_name }}</strong><br />
                 <small>{{ cls.professor }}</small><br />
                 <small>{{ cls.level }}</small>
@@ -110,6 +128,14 @@
       @close="closeModal"
       @saved="onSaved"
     />
+
+    <OverlappingModal
+      v-if="showOverlapModal"
+      :classes="overlappingClasses"
+      @edit="onEditOverlappedClass"
+      @close="showOverlapModal = false"
+    />
+
   </div>
 </template>
 
@@ -117,55 +143,127 @@
 import { ref, onMounted, computed } from 'vue'
 import { useTimetable } from '@/composables/useTimetable'
 import TimetableModal from '@/components/TimetableModal.vue'
+import flatPickr from 'vue-flatpickr-component'
+import 'flatpickr/dist/flatpickr.min.css'
+import { Korean } from 'flatpickr/dist/l10n/ko.js'
+import OverlappingModal from '@/components/OverlappingModal.vue'
 
-const { timetable, selectedDate, grade, fetchWeekTimetable } = useTimetable()
+
+const { timetable, selectedDate, grade, fetchWeekTimetable, goToPreviousWeek, goToNextWeek } = useTimetable()
 
 const user = JSON.parse(localStorage.getItem('user') || '{}')
 const isAdminOrProfessor = user.role === 'admin' || user.role === 'professor'
 
 const today = new Date().toISOString().split("T")[0]
-const showModal = ref(false)
 const selectedClass = ref(null)
 
+const calendarRef = ref(null)
+
+// 모달
+const showOverlapModal = ref(false)
+const overlappingClasses = ref([])
+
+// 시간표 누군지 확인
+const titleText = computed(() => {
+  if (user.role === 'admin') return '전체 시간표 (관리자용)'
+  if (user.role === 'professor') return '전체 시간표 (교수용)'
+  return  `${user.name}님의 주간 시간표`
+})
+
+function toggleCalendar() {
+  if (calendarRef.value && calendarRef.value.fp) {
+    const isOpen = calendarRef.value.fp.isOpen
+    if (isOpen) {
+      calendarRef.value.fp.close()
+    } else {
+      calendarRef.value.fp.open()
+    }
+  }
+}
+
+
+function goToToday() {
+  selectedDate.value = today
+  onDateChange()
+}
+
+const weekRange = computed(() => {
+  const date = new Date(selectedDate.value)
+  const day = date.getDay() || 7
+  const monday = new Date(date)
+  monday.setDate(date.getDate() - day + 1)
+  const sunday = new Date(monday)
+  sunday.setDate(monday.getDate() + 6)
+
+  const format = (d) => `${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`
+  return `${format(monday)}~${format(sunday)}`
+})
+
+const showModal = ref(false)
 const showTooltip = ref(null)
 
 const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
-const periods = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+const periods = Array.from({ length: 12 }, (_, i) => i + 1)
+const periodTimes = {
+  1: '09:00 ~ 09:50',
+  2: '10:00 ~ 10:50',
+  3: '11:00 ~ 11:50',
+  4: '12:00 ~ 12:50',
+  5: '13:00 ~ 13:50',
+  6: '14:00 ~ 14:50',
+  7: '15:00 ~ 15:50',
+  8: '16:00 ~ 16:50',
+  9: '17:00 ~ 17:50',
+  10: '18:00 ~ 18:50',
+  11: '19:00 ~ 19:50',
+  12: '20:00 ~ 20:50',
+}
 
 function getClassesForMergedCell(day, period) {
+  const isAdmin = user.role === 'admin' || user.role === 'professor'
   const classes = timetable.value[day] || []
 
-  // ✅ 현재 교시에 포함된 수업들 추출 (start ~ end 사이)
   const active = classes.filter(cls =>
     cls.start_period <= period && cls.end_period >= period
   )
-
-  // ✅ 시작 교시에만 카드 생성
   const startOnly = active.filter(cls => cls.start_period === period)
 
-  // ✅ 특강 요약 카드 처리 (동일 교시에 특강 여러 개 있을 경우)
-  const specials = startOnly.filter(c => c.category === '특강')
-  const regulars = startOnly.filter(c => c.category !== '특강')
+  const regulars = startOnly.filter((c) => {
+  if (c.category !== '정규') return false
+  if (c.academic_year == null) return false
 
-  if (specials.length > 1) {
-  const tooltip = specials.map(c => `${c.subject_name} - ${c.professor}`).join('\n')
-  regulars.push({
-    id: 'special-summary-' + day + '-' + period,
-    category: '특강',
-    _summary: true,
-    _tooltip: tooltip,
-    _count: specials.length,
-    _originals: specials, // ✅ 빠져있던 핵심
-    start_period: period,
-    end_period: period
+  // 디버깅 로그
+  const isMatch = Number(c.academic_year) === Number(grade.value)
+  console.log(`🎯 정규 비교: {academic_year: ${c.academic_year}, gradeValue: ${grade.value}, result: ${isMatch}}`)
+
+  if (user.role === 'admin' || user.role === 'professor') return true
+  return isMatch
   })
-}
- else {
-    regulars.push(...specials)
+
+  const specials = startOnly.filter(c => c.category === '특강')
+  let specialsToPush = []
+  if (specials.length > 1) {
+    specialsToPush.push({
+      id: 'special-summary-' + day + '-' + period,
+      category: '특강',
+      _summary: true,
+      _count: specials.length,
+      _originals: specials,
+      start_period: period,
+      end_period: period
+    })
+  } else {
+    specialsToPush = specials
   }
 
-  return regulars
+  const koreans = startOnly.filter(
+    c => c.category === '한국어' && user.is_foreign === 1
+  )
+
+  return [...regulars, ...specialsToPush, ...koreans]
 }
+
+
 
 function onDateChange() {
   fetchWeekTimetable(selectedDate.value)
@@ -173,8 +271,18 @@ function onDateChange() {
 
 function changeGrade(newGrade) {
   grade.value = newGrade
-  fetchWeekTimetable(selectedDate.value)
+  fetchWeekTimetable(selectedDate.value, newGrade)
 }
+
+
+// 수정용 함수
+function onEditOverlappedClass(cls) {
+  selectedClass.value = cls
+  showModal.value = true
+  showOverlapModal.value = false
+}
+
+
 
 // 드레그 함수
 const dragStart = ref(null)
@@ -261,8 +369,6 @@ function onEmptyCellClick(day, period) {
   showModal.value = true
 }
 
-
-
 const selectedRange = computed(() => {
   if (!dragStart.value || !dragEnd.value) return []
 
@@ -277,8 +383,6 @@ const selectedRange = computed(() => {
     period: startPeriod + i
   }))
 })
-
-
 
 function openEmptyModal() {
   if (!isAdminOrProfessor) return
@@ -299,8 +403,15 @@ function openEmptyModal() {
 
 function openModal(day, period, cls) {
   if (!isAdminOrProfessor) return
-  if (cls._summary) return  // 특강 요약카드는 클릭 안되게 처리
 
+  // ✅ 요약 카드(특강 여러개)일 경우 → 겹침 모달 열기
+  if (cls._summary) {
+    overlappingClasses.value = cls._originals
+    showOverlapModal.value = true
+    return
+  }
+
+  // ✅ 일반 수업 수정 모달 열기
   selectedClass.value = cls || {
     day,
     start_period: period,
@@ -313,8 +424,10 @@ function openModal(day, period, cls) {
     end_date: selectedDate.value,
     period: grade.value
   }
+
   showModal.value = true
 }
+
 
 function closeModal() {
   showModal.value = false
@@ -327,7 +440,9 @@ function onSaved() {
 
 onMounted(() => {
   selectedDate.value = today
-  fetchWeekTimetable(today)
+  fetchWeekTimetable(today).then(() => {
+    console.log("📅 오늘 시간표:", timetable.value)
+  })
 })
 </script>
 
@@ -339,17 +454,36 @@ onMounted(() => {
   padding: 0 16px;
   font-family: 'Noto Sans KR', sans-serif;
 }
-h2 {
-  font-size: 18px;
-  margin-bottom: 10px;
+
+.title {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 16px;
   color: #1f2937;
 }
-.grade-buttons {
+
+.header-area {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.grade-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.spacer {
+  flex: 1;
+}
+
+.grade-toolbar {
   display: flex;
   gap: 8px;
-  margin-bottom: 16px;
 }
-.grade-buttons button {
+
+.grade-toolbar button {
   background-color: #f9fafb;
   border: 1px solid #d1d5db;
   color: #374151;
@@ -359,43 +493,52 @@ h2 {
   font-weight: 500;
   transition: background 0.2s;
 }
-.grade-buttons button:hover {
+.grade-toolbar button:hover {
   background-color: #e5e7eb;
 }
-.controls {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 20px;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-.controls input[type="date"] {
-  padding: 6px 10px;
-  font-size: 14px;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-}
-.add-class-button {
-  margin-bottom: 16px;
-}
-.add-class-button button {
-  background-color: #1d4ed8;
-  color: white;
-  border: none;
-  padding: 8px 14px;
-  font-size: 14px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 500;
-  transition: background-color 0.2s;
-}
-.add-class-button button:hover {
-  background-color: #2563eb;
+.highlighted {
+  background-color: #dbeafe !important;
+  border-color: #60a5fa;
+  color: #1e40af;
 }
 
-.highlighted {
-  background-color: #dbeafe !important; /* 연한 파란색 */
+.week-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.week-range {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.week-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.week-controls button {
+  padding: 5px 10px;
+  border: 1px solid #ccc;
+  background: white;
+  font-weight: 500;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.week-controls button:hover {
+  background-color: #f3f4f6;
+}
+
+.calendar-picker {
+  border: 1px solid #d1d5db;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  width: 140px;
 }
 
 .timetable {
@@ -523,6 +666,95 @@ td {
 .hoverable:hover {
   background-color: #eff6ff; /* 연한 하늘색 */
   cursor: pointer;
+}
+
+.controls button {
+  padding: 6px 12px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  background: white;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+.controls button:hover {
+  background-color: #f3f4f6;
+  color: #1d4ed8;
+  border-color: #1d4ed8;
+}
+
+.week-control {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.week-range {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.week-buttons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.week-buttons button {
+  padding: 5px 10px;
+  border: 1px solid #ccc;
+  background: white;
+  font-weight: 500;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.week-buttons button:hover {
+  background-color: #f3f4f6;
+}
+
+.calendar-picker {
+  border: 1px solid #d1d5db;
+  padding: 6px 10px;
+  border-radius: 6px;
+}
+
+.period-cell {
+  font-weight: 600;
+  font-size: 14px;
+  line-height: 1.4;
+  vertical-align: middle; /* ✅ 가운데 정렬 */
+  text-align: center;
+  height: 90px; /* 혹시 없으면 넣기 */
+}
+
+
+.time-text {
+  font-size: 11px;
+  color: #6b7280;
+  display: block;
+  margin-top: 4px;
+}
+
+/* 특강 */
+.badge-overlap {
+  position: absolute;
+  top: 8px;
+  left: 10px;
+  padding: 4px 8px;
+  background-color: #fcd34d;  /* 노랑 or #f97316 오렌지도 ok */
+  color: #1f2937;
+  font-size: 11.5px;
+  font-weight: 600;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.badge-overlap:hover {
+  background-color: #fde68a;
 }
 
 

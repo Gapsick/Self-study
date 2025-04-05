@@ -2,39 +2,79 @@ const express = require("express");
 const router = express.Router();
 const db = require("../config/db");
 
-// ✅ 날짜별 시간표 조회 (학년 기준)
 router.get("/timetable/:academic_year/date/:date", async (req, res) => {
   const { academic_year, date } = req.params;
 
   try {
     const dayOfWeek = new Date(date).toLocaleString("en-US", { weekday: "long" });
 
-    const query = `
-    SELECT t.id, t.day, t.start_period, t.end_period, t.professor, t.classroom,
-          DATE_FORMAT(t.start_date, '%Y-%m-%d') AS start_date,
-          DATE_FORMAT(t.end_date, '%Y-%m-%d') AS end_date,
-          s.name AS subject_name, s.category, s.level,
-          s.class_group AS subject_class_group,
-          t.class_group AS class_group,  -- ✅ 여기를 이렇게
-       t.subject_id
-      FROM timetable t
-      JOIN subjects s ON t.subject_id = s.id
-      WHERE ? BETWEEN t.start_date AND t.end_date
-        AND t.day = ?
-        AND (
-          (s.category = '정규' AND s.academic_year = ?)
-          OR s.category = '특강'
-        )
-      ORDER BY t.start_period;
-    `;
+    let query = "";
+    let values = [date, date, dayOfWeek];  // 먼저 공통적으로 들어가는 3개
 
-    const [results] = await db.promise().query(query, [date, dayOfWeek, academic_year]);
+    if (academic_year === "KOR") {
+      query = `
+        SELECT t.id, t.day, t.start_period, t.end_period, t.professor, t.classroom,
+              DATE_FORMAT(t.start_date, '%Y-%m-%d') AS start_date,
+              DATE_FORMAT(t.end_date, '%Y-%m-%d') AS end_date,
+              s.name AS subject_name, s.category, s.level,
+              s.academic_year,
+              s.class_group AS subject_class_group,
+              t.class_group AS class_group,
+              t.subject_id,
+              EXISTS (
+                SELECT 1 FROM holidays h
+                WHERE h.subject_id = t.subject_id
+                  AND DATE(h.holiday_date) = DATE(?)
+                  AND LOWER(h.day) = LOWER(t.day)
+                  AND h.lecture_period = t.start_period
+              ) AS is_absent
+        FROM timetable t
+        JOIN subjects s ON t.subject_id = s.id
+        WHERE ? BETWEEN t.start_date AND t.end_date
+          AND t.day = ?
+          AND s.category = '한국어'
+          AND s.academic_year IS NULL
+        ORDER BY t.start_period;
+      `;
+    } else {
+      query = `
+        SELECT t.id, t.day, t.start_period, t.end_period, t.professor, t.classroom,
+              DATE_FORMAT(t.start_date, '%Y-%m-%d') AS start_date,
+              DATE_FORMAT(t.end_date, '%Y-%m-%d') AS end_date,
+              s.name AS subject_name, s.category, s.level,
+              s.academic_year,
+              s.class_group AS subject_class_group,
+              t.class_group AS class_group,
+              t.subject_id,
+              EXISTS (
+                SELECT 1 FROM holidays h
+                WHERE h.subject_id = t.subject_id
+                  AND DATE(h.holiday_date) = DATE(?)
+                  AND LOWER(h.day) = LOWER(t.day)
+                  AND h.lecture_period = t.start_period
+              ) AS is_absent
+        FROM timetable t
+        JOIN subjects s ON t.subject_id = s.id
+        WHERE ? BETWEEN t.start_date AND t.end_date
+          AND t.day = ?
+          AND (
+            (s.category = '정규' AND s.academic_year = ?)
+            OR s.category = '특강'
+          )
+        ORDER BY t.start_period;
+      `;
+      values.push(academic_year);  // academic_year는 정규 수업 쿼리만 필요
+    }
+
+    const [results] = await db.promise().query(query, values);
     res.json(results);
   } catch (err) {
     console.error("❌ 날짜별 시간표 조회 오류:", err);
     res.status(500).json({ error: "시간표 조회 중 오류 발생" });
   }
 });
+
+
 
 // ✅ 주간 시간표 조회 (학년 기준)
 router.get("/timetable", async (req, res) => {
@@ -63,16 +103,18 @@ router.get("/timetable", async (req, res) => {
     }
 
     const sql = `
-      SELECT 
-        t.id, t.day, t.start_period, t.end_period, t.professor, t.classroom,
-        DATE_FORMAT(t.start_date, '%Y-%m-%d') AS start_date,
-        DATE_FORMAT(t.end_date, '%Y-%m-%d') AS end_date,
-        s.name AS subject_name, t.subject_id, t.class_group, s.academic_year
+    SELECT 
+      t.id, t.day, t.start_period, t.end_period, t.professor, t.classroom,
+      DATE_FORMAT(t.start_date, '%Y-%m-%d') AS start_date,
+      DATE_FORMAT(t.end_date, '%Y-%m-%d') AS end_date,
+      s.name AS subject_name, t.subject_id, t.class_group,
+      s.academic_year, s.category, s.level, s.class_group AS subject_class_group
       FROM timetable t
       JOIN subjects s ON t.subject_id = s.id
       WHERE ${condition}
       ORDER BY FIELD(t.day,'Monday','Tuesday','Wednesday','Thursday','Friday'), t.start_period
     `;
+  
     const [rows] = await db.promise().query(sql);
     res.json(rows); // 배열 그대로 응답
   } catch (err) {
@@ -82,12 +124,13 @@ router.get("/timetable", async (req, res) => {
 });
 
 
-// ✅ 학생 개별 시간표 조회 (grade, specialLecture, class_group 기준)
-router.get("/timetable/user/:id", async (req, res) => {
-  const { id } = req.params;
+// ✅ 학생 개별 시간표 조회
+router.get("/timetable/user/:id/date/:date", async (req, res) => {
+  const { id, date } = req.params;
+
+  if (!date) return res.status(400).json({ error: '날짜가 필요합니다.' });
 
   try {
-    // 사용자 정보 조회
     const [userResult] = await db.promise().query(
       "SELECT grade, special_lecture, class_group, is_foreign FROM users WHERE id = ?",
       [id]
@@ -98,29 +141,39 @@ router.get("/timetable/user/:id", async (req, res) => {
     const { grade, special_lecture, class_group, is_foreign } = user;
 
     const query = `
-      SELECT 
-        t.id, t.day, t.start_period, t.end_period, t.professor, t.classroom,
-        DATE_FORMAT(t.start_date, '%Y-%m-%d') AS start_date,
-        DATE_FORMAT(t.end_date, '%Y-%m-%d') AS end_date,
-        s.name AS subject_name, t.subject_id, t.class_group, 
-        s.academic_year, s.category, s.level
+    SELECT t.id, t.day, t.start_period, t.end_period, t.professor, t.classroom,
+          DATE_FORMAT(t.start_date, '%Y-%m-%d') AS start_date,
+          DATE_FORMAT(t.end_date, '%Y-%m-%d') AS end_date,
+          s.name AS subject_name, s.category, s.level,
+          s.academic_year,
+          s.class_group AS subject_class_group,
+          t.class_group AS class_group,
+          t.subject_id,
+          EXISTS (
+            SELECT 1 FROM holidays h
+            WHERE h.subject_id = t.subject_id
+              AND DATE(h.holiday_date) = DATE(?)
+              AND LOWER(h.day) = LOWER(t.day)
+              AND h.lecture_period = t.start_period
+          ) AS is_absent
       FROM timetable t
       JOIN subjects s ON t.subject_id = s.id
       WHERE 
         (
           (s.category = '정규' AND s.academic_year = ?) OR
           (s.category = '특강' AND s.level = ? AND (t.class_group = ? OR t.class_group = '전체')) OR
-          (s.category = '한국어' AND ? = 1 AND s.level = ?)  -- ✅ 한국어 조건 추가
+          (s.category = '한국어' AND ? = 1)
         )
       ORDER BY FIELD(t.day,'Monday','Tuesday','Wednesday','Thursday','Friday'), t.start_period
-    `
-
+    `;
 
     const [rows] = await db.promise().query(query, [
-      grade, special_lecture, class_group,
-      is_foreign, special_lecture  // ✅ 한국어 조건에 대응
-    ]);
-    
+      date,               // for holiday check
+      grade,              // 정규 수업 필터
+      special_lecture,    // 특강 level
+      class_group,        // 특강 반
+      is_foreign          // 유학생 여부 (한국어 수업 조건)
+    ])
 
     res.json(rows);
   } catch (err) {
@@ -135,25 +188,32 @@ router.post("/timetable", async (req, res) => {
   try {
     const {
       subject_id, professor, classroom, day,
-      start_period, end_period, start_date, end_date, class_group
+      start_period, end_period, start_date, end_date,
+      class_group, category,
+      level, period // 🔥 누락되었던 항목 추가
     } = req.body;
 
     if (!subject_id || !professor || !classroom || !day || !start_period || !end_period || !start_date || !end_date) {
       return res.status(400).json({ error: "필수 입력값이 누락되었습니다." });
     }
 
+    // 🔥 academic_year 제거한 INSERT 쿼리
     const insertQuery = `
       INSERT INTO timetable (
         subject_id, day, professor, classroom,
-        start_period, end_period, start_date, end_date, class_group
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        start_period, end_period, start_date, end_date,
+        class_group, category, level
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
+
     await db.promise().query(insertQuery, [
       subject_id, day, professor, classroom,
       start_period, end_period, start_date, end_date,
-      class_group?.trim() ? class_group : null
+      class_group?.trim() ? class_group : null,
+      category || '정규',
+      level || null
     ]);
-    
+
     res.status(201).json({ message: "시간표 추가 완료" });
   } catch (error) {
     console.error("❌ 시간표 추가 오류:", error);
@@ -161,13 +221,14 @@ router.post("/timetable", async (req, res) => {
   }
 });
 
+
 // ✅ 시간표 수정
 router.put("/timetable/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const {
       subject_id, professor, classroom,
-      start_period, end_period, start_date, end_date, day, class_group
+      start_period, end_period, start_date, end_date, day, class_group, category
     } = req.body;
 
     if (!subject_id || !professor || !classroom || !start_period || !end_period || !start_date || !end_date || !day) {
@@ -177,13 +238,13 @@ router.put("/timetable/:id", async (req, res) => {
     const updateQuery = `
       UPDATE timetable
       SET subject_id = ?, professor = ?, classroom = ?,
-          start_period = ?, end_period = ?, start_date = ?, end_date = ?, day = ?, class_group = ?
+          start_period = ?, end_period = ?, start_date = ?, end_date = ?, day = ?, class_group = ?, category = ?
       WHERE id = ?
     `;
     await db.promise().query(updateQuery, [
       subject_id, professor, classroom,
       start_period, end_period, start_date, end_date, day,
-      class_group?.trim() ? class_group : null,
+      class_group?.trim() ? class_group : null, category || '정규',
       id
     ]);
     

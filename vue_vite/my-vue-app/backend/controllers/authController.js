@@ -166,13 +166,14 @@ const googleCallback = async (req, res) => {
               token: "${jwtToken}", 
               googleAccessToken: "${access_token}",  // ✅ Google Access Token 추가
               refreshToken: "${refresh_token || ""}", 
-              email: "${user.email}",  // ✅ 이메일 추가
+              email: "${user.email}",
               role: "${user.role || "student"}",
               grade: "${user.grade || ""}",
               name: "${user.name}",
               specialLecture: "${user.special_lecture || ""}",
-              class_group: "${user.class_group || ""}", // ✅ 이것도 있으면 추가
-              id: "${user.id}"  // ✅ 이 줄 추가!
+              class_group: "${user.class_group || ""}", //
+              id: "${user.id}",
+              is_foreign: "${user.is_foreign || 0}"
             }, "http://localhost:5173");
             window.close();
           </script>

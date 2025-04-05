@@ -50,7 +50,8 @@ function saveUserData(data) {
     role: data.role,
     grade: data.grade || null,
     specialLecture: data.specialLecture || null,
-    class_group: data.class_group || null
+    class_group: data.class_group || null,
+    is_foreign: data.is_foreign || 0  // ✅ 이거 추가!
   }
 
   localStorage.setItem('user', JSON.stringify(user))

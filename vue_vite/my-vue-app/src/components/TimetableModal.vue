@@ -77,9 +77,12 @@
 </template>
 
 <script setup>
-import { reactive, ref, onMounted, computed, watch } from 'vue'
+import { reactive, ref, onMounted, computed, watch, watchEffect } from 'vue'
 import axios from 'axios'
 import { useSubjects } from '@/composables/useSubjects'
+import { addHoliday, deleteHoliday } from '@/api/holidaysApi'
+import { nextTick } from 'vue'
+
 
 const props = defineProps({
   editData: Object,
@@ -101,6 +104,8 @@ const selectedDay = ref('')
 const user = JSON.parse(localStorage.getItem('user') || '{}')
 
 const form = reactive({})
+
+// 🔽 1. 기본값 먼저 설정
 Object.assign(form, {
   category: '정규',
   subject_name: '',
@@ -111,9 +116,14 @@ Object.assign(form, {
   start_date: '',
   end_date: '',
   day: '',
-  status: '수업 있음',
-  class_group: null  // ✅ null로 설정
-}, props.editData || {})  // ✅ 수정 시 값 반영
+  status: '',  // 기본값으로만 세팅. 덮지 않음!
+  class_group: null
+})
+
+// 🔽 2. editData가 있으면 그대로 덮어씀
+if (props.editData) {
+  Object.assign(form, props.editData)
+}
 
 
 const selectedYear = computed(() => {
@@ -145,20 +155,108 @@ watch(isAbsent, val => {
 })
 
 // 날짜 초기화
-onMounted(() => {
-  form.start_date = formatDateLocal(props.editData?.start_date)
-  form.end_date = formatDateLocal(props.editData?.end_date)
-  selectedDay.value = reverseDayMap[props.editData?.day] || ''
-  isAbsent.value = form.status === '휴강'
-  console.log('🧪 props.editData:', props.editData)
-  console.log('🧪 최종 form:', form)
-})
+watch(
+  () => props.editData,
+  async (val) => {
+    if (!val) return;
+
+    // 🔄 form 정보 먼저 복사
+    Object.assign(form, val);
+
+    // ✅ 요일 세팅 → 그걸 기반으로 날짜 계산
+    selectedDay.value = reverseDayMap[val.day] || '';
+
+    // ✅ 요일 기반 날짜 계산 (올바른 순서)
+    const correctedDate = getActualHolidayDateFromWeek(props.date, val.day);
+    form.start_date = correctedDate;
+    form.end_date = correctedDate;
+
+    await nextTick();
+    isAbsent.value = !!val.is_absent;
+  },
+  { immediate: true }
+)
+
 
 function formatDateLocal(dateStr) {
   if (!dateStr) return ''
   const d = new Date(dateStr)
   return isNaN(d) ? '' : d.toISOString().split('T')[0]
 }
+
+function getActualHolidayDate(baseDate, targetDayEng) {
+  const base = new Date(baseDate)
+  const baseDay = base.getDay()
+
+  const dayToNumber = {
+    'Sunday': 0, 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3,
+    'Thursday': 4, 'Friday': 5, 'Saturday': 6
+  }
+
+  const targetDay = dayToNumber[targetDayEng]
+  const diff = targetDay - baseDay
+  const actualDate = new Date(base)
+  actualDate.setDate(base.getDate() + diff)
+
+  return actualDate.toISOString().split('T')[0]
+}
+
+function getActualHolidayDateFromWeek(selectedWeekDate, targetDayEng) {
+  const base = new Date(selectedWeekDate);
+  const baseDay = base.getDay();
+
+  // 주의 시작을 "월요일"로 보정
+  const monday = new Date(base);
+  const offsetToMonday = baseDay === 0 ? -6 : 1 - baseDay;  // 일요일이면 -6, 그 외는 1 - baseDay
+  monday.setDate(base.getDate() + offsetToMonday);
+
+  // 목표 요일 더하기
+  const dayToNumber = {
+    'Monday': 0, 'Tuesday': 1, 'Wednesday': 2,
+    'Thursday': 3, 'Friday': 4
+  };
+
+  const dayOffset = dayToNumber[targetDayEng];
+  if (dayOffset === undefined) return ''; // 잘못된 요일이면 빈 문자열
+
+  const result = new Date(monday);
+  result.setDate(monday.getDate() + dayOffset);
+
+  return result.toISOString().split('T')[0];
+}
+
+
+async function remove() {
+  if (!form.id) return;
+
+  const confirmed = confirm("정말 이 수업을 삭제하시겠습니까?");
+  if (!confirmed) return;
+
+  try {
+    await axios.delete(`http://localhost:5000/api/timetable/${form.id}`);
+
+    // 🔄 form.start_date를 기준으로 보정
+    const actualHolidayDate = getActualHolidayDate(form.start_date, form.day);
+
+    const holidayPayload = {
+      holiday_date: actualHolidayDate,
+      subject_id: form.subject_id,
+      day: form.day,
+      lecture_period: form.start_period,
+      period: form.academic_year ?? props.grade
+    };
+
+    await deleteHoliday(holidayPayload);
+
+    alert("🗑 삭제 완료");
+    emit("saved");
+    emit("close");
+  } catch (err) {
+    console.error("❌ 삭제 실패:", err);
+    alert("❌ 삭제 실패");
+  }
+}
+
 
 async function save() {
   const subject = subjects.value.find(s => s.name === form.subject_name)
@@ -174,13 +272,11 @@ async function save() {
     start_date: form.start_date,
     end_date: form.end_date,
     status: isAbsent.value ? '휴강' : '수업 있음',
-    period: subject.academic_year ?? props.grade,  // academic_year 우선 사용
+    period: subject.academic_year ?? props.grade,
     level: subject.level || null,
     class_group: form.class_group || null,
-    category: subject.category || '정규'
+    category: form.category
   }
-
-  console.log("🚀 저장 전 payload:", payload)
 
   try {
     if (form.id) {
@@ -188,6 +284,25 @@ async function save() {
     } else {
       await axios.post(`http://localhost:5000/api/timetable`, payload)
     }
+
+    // ✅ 휴강일 계산용 기준 날짜 분리
+    const baseDateForHoliday = form.id ? form.start_date : props.date
+    const actualHolidayDate = getActualHolidayDate(baseDateForHoliday, payload.day)
+
+    const holidayPayload = {
+      holiday_date: actualHolidayDate,
+      subject_id: payload.subject_id,
+      day: payload.day,
+      lecture_period: payload.start_period,
+      period: subject.academic_year ?? props.grade
+    }
+
+    if (isAbsent.value) {
+      await addHoliday(holidayPayload)
+    } else {
+      await deleteHoliday(holidayPayload)
+    }
+
     alert('✅ 시간표 저장 완료')
     emit('saved')
     emit('close')
@@ -198,18 +313,7 @@ async function save() {
 }
 
 
-async function remove() {
-  if (!confirm('정말 삭제하시겠습니까?')) return
-  try {
-    await axios.delete(`http://localhost:5000/api/timetable/${form.id}`)
-    alert('🗑 삭제 완료')
-    emit('saved')
-    emit('close')
-  } catch (err) {
-    console.error(err)
-    alert('❌ 삭제 실패')
-  }
-}
+
 </script>
 
 <style scoped>

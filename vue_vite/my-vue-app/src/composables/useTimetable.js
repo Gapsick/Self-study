@@ -11,10 +11,10 @@ export function useTimetable() {
   })
 
   const selectedDate = ref('')
-  const grade = ref(1)
 
   const user = JSON.parse(localStorage.getItem('user') || '{}')
   const isAdminOrProfessor = user.role === 'admin' || user.role === 'professor'
+  const grade = ref(Number(user.grade || 1)) // ✅ localStorage에서 가져온 사용자 학년 반영
 
   function getWeekDates(baseDate) {
     const date = new Date(baseDate)
@@ -45,21 +45,35 @@ export function useTimetable() {
     await Promise.all(
       dates.map(async (d) => {
         const dayName = new Date(d).toLocaleString('en-US', { weekday: 'long' })
-
-        // ✅ 사용자 역할에 따라 호출 방식 분기
+    
         let classes = []
         if (isAdminOrProfessor) {
           const actualGrade = useGrade ?? grade.value
-          classes = await getTimetableByGradeAndDate(actualGrade, d)
+    
+          // ✅ 정규+특강 + 한국어 병렬 조회
+          const [regularAndSpecial, korean] = await Promise.all([
+            getTimetableByGradeAndDate(actualGrade, d),
+            getTimetableByGradeAndDate("KOR", d),
+          ])
+    
+          classes = [...regularAndSpecial, ...korean]
         } else {
-          classes = await getTimetableByUserId(user.id)
-          // 백엔드에서 날짜로 필터된 게 아니면 직접 날짜로 걸러도 됨:
-          classes = classes.filter(c => new Date(d) >= new Date(c.start_date) && new Date(d) <= new Date(c.end_date) && c.day === dayName)
+          // ✅ 학생은 본인 기준으로 조회
+          classes = await getTimetableByUserId(user.id, d)
+          classes = classes.filter(c =>
+            new Date(d) >= new Date(c.start_date) &&
+            new Date(d) <= new Date(c.end_date) &&
+            c.day === dayName
+          )
         }
-
-        schedule[dayName] = classes
+    
+        schedule[dayName] = classes.map(c => ({
+          ...c,
+          is_absent: c.is_absent === 1, // ✅ 명확하게 boolean으로 변환
+        }))
       })
     )
+    
 
     if (targetRef) {
       targetRef.value = schedule
@@ -82,7 +96,22 @@ export function useTimetable() {
     await deleteTimetable(id)
     await fetchWeekTimetable(selectedDate.value)
   }
-
+  
+  // 날짜 이동 함수
+  function goToPreviousWeek() {
+    const date = new Date(selectedDate.value)
+    date.setDate(date.getDate() - 7)
+    const newDate = date.toISOString().split('T')[0]
+    fetchWeekTimetable(newDate)
+  }
+  
+  function goToNextWeek() {
+    const date = new Date(selectedDate.value)
+    date.setDate(date.getDate() + 7)
+    const newDate = date.toISOString().split('T')[0]
+    fetchWeekTimetable(newDate)
+  }
+  
   return {
     timetable,
     selectedDate,
@@ -91,5 +120,7 @@ export function useTimetable() {
     createClass,
     updateClass,
     removeClass,
+    goToPreviousWeek,
+    goToNextWeek 
   }
 }
