@@ -12,7 +12,6 @@ const getPendingUsers = async (req, res) => {
     }
   };
   
-
 const registerUser = async (req, res) => {
   const { name, studentId, phone, grade, isForeign, email, specialLecture } = req.body;
 
@@ -44,6 +43,59 @@ const registerUser = async (req, res) => {
   }
 };
 
-  
+// 인증번호 Line
+const generateLineAuthCode = async (req, res) => {
+  try {
+    const userId = req.user.id; // JWT 인증 미들웨어 통해 삽입된 값
 
-module.exports = { getPendingUsers, registerUser };
+    // 6자리 숫자 인증번호 생성
+    const authCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // DB에 저장
+    await db.promise().query(
+      `UPDATE users SET line_auth_code = ? WHERE id = ?`,
+      [authCode, userId]
+    );
+
+    res.json({
+      success: true,
+      code: authCode,
+      message: "✅ 인증번호가 생성되었습니다. LINE으로 전송해주세요.",
+    });
+  } catch (err) {
+    console.error("❌ 인증번호 생성 실패:", err);
+    res.status(500).json({ message: "서버 오류로 인증번호 생성 실패" });
+  }
+};
+
+const generateRandomCode = () => {
+  return Math.floor(100000 + Math.random() * 900000).toString(); // 6자리 랜덤 숫자
+};
+
+const createLineAuthCode = async (req, res) => {
+  const { email } = req.body;
+
+  if (!email) {
+    return res.status(400).json({ message: "이메일이 필요합니다." });
+  }
+
+  const code = generateRandomCode();
+
+  try {
+    const [result] = await db.promise().query(
+      "UPDATE users SET line_auth_code = ? WHERE email = ?",
+      [code, email]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "해당 사용자를 찾을 수 없습니다." });
+    }
+
+    res.json({ success: true, message: "인증번호가 생성되었습니다.", code });
+  } catch (err) {
+    console.error("❌ 인증번호 생성 실패:", err);
+    res.status(500).json({ message: "서버 오류", error: err });
+  }
+};
+
+module.exports = { getPendingUsers, registerUser, generateLineAuthCode, generateRandomCode, createLineAuthCode };

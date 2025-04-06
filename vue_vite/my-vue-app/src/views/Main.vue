@@ -11,17 +11,37 @@
             :class="{ active: selectedNotice && selectedNotice.id === notice.id }"
             @click="selectNotice(notice)"
           >
-            {{ notice.title }}
+            <div class="notice-title">
+              {{ notice.title }}
+              <div class="badge-container">
+                <span v-if="notice.category" class="notice-badge category-badge">
+                  {{ notice.category }}
+                </span>
+                <span v-if="notice.academic_year && !notice.academic_year.toString().includes('학년')" class="notice-badge">
+                  {{ notice.academic_year === '전체' ? '전체' : `${notice.academic_year}학년` }}
+                </span>
+              </div>
+            </div>
+            <div class="notice-meta">
+              <span class="notice-date">{{ formatNoticeDate(notice.date) }}</span>
+            </div>
           </li>
         </ul>
       </div>
-      <transition name="slide-fade" mode="out-in">
-        <div class="schedule-detail" v-if="selectedNotice" :key="selectedNotice.id">
+      <div class="schedule-detail notice-detail" v-if="selectedNotice" :key="selectedNotice.id">
+        <div class="notice-header">
           <h3>{{ selectedNotice.title }}</h3>
-          <p>{{ selectedNotice.content }}</p>
-          <p class="date">{{ selectedNotice.date }}</p>
+          <div class="notice-meta">
+            <span class="notice-date">{{ formatNoticeDate(selectedNotice.date) }}</span>
+          </div>
         </div>
-      </transition>
+        <div class="notice-content">{{ selectedNotice.content }}</div>
+      </div>
+      <div class="schedule-detail" v-else>
+        <div class="no-classes">
+          공지사항을 선택해주세요.
+        </div>
+      </div>
     </div>
 
     <!-- 일정 -->
@@ -51,70 +71,142 @@
 
     <!-- 시간표 -->
     <div class="section-box timetable-container">
+      <!-- 왼쪽: 달력 -->
       <div class="schedule-list">
-        <h2>오늘 수업</h2>
-        <ul>
-          <li v-if="todayTimetable.length === 0">오늘 수업이 없습니다.</li>
-          <li v-for="(item, index) in todayTimetable" :key="index">
-            {{ item.period }}교시 - {{ item.subject }}
-          </li>
-        </ul>
+        <h2>날짜 선택</h2>
+        <Calendar
+          v-model="selectedDate"
+          :attributes="calendarAttributes"
+          :masks="masks"
+          color="blue"
+          :min-date="new Date(2024, 0, 1)"
+          :max-date="new Date(2025, 11, 31)"
+          class="custom-calendar"
+          locale="ko-KR"
+          @dayclick="onDateSelect"
+        />
       </div>
 
+      <!-- 오른쪽: 시간표 -->
       <div class="timetable-display">
-        <h3>주간 시간표</h3>
-        <table class="mini-timetable">
-          <thead>
-            <tr>
-              <th>교시</th>
-              <th v-for="day in days" :key="day">{{ day }}</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="period in periods" :key="period">
-              <td>{{ period }}교시</td>
-              <td
-                v-for="day in days"
-                :key="day + '-' + period"
-              >
-                <div
-                  v-for="cls in getClassesByDayPeriod(day, period)"
-                  :key="cls.id"
-                  :class="[
-                    'mini-class-box',
-                    cls.status === '휴강' ? 'cancelled' : 'active',
-                    userRole !== 'student' ? `grade-${cls.grade}` : ''  // 관리자/교수일 경우 학년색
-                  ]"
+        <h3>{{ formattedDate }} 수업</h3>
+        <template v-if="isAdminOrProfessor">
+          <!-- 학년별 수업 -->
+          <template v-for="grade in [1, 2, 3]" :key="grade">
+            <div v-if="getGradeClasses(grade).length > 0" class="grade-section">
+              <h4 class="grade-title">{{ grade }}학년</h4>
+              <ul class="class-list">
+                <li
+                  v-for="(item, index) in getGradeClasses(grade)"
+                  :key="index"
+                  class="class-card"
                 >
-                  <!-- (예: ({{ cls.grade }}학년) 같이 표시 가능) -->
-                  <strong>{{ cls.subject_name }}</strong>
-                  <small>{{ cls.professor }}</small>
-                  <span v-if="cls.status === '휴강'" class="cancel-text">🛑 휴강</span>
+                  <div class="class-info">
+                    <div class="class-period">{{ item.period }}</div>
+                    <div class="class-subject">
+                      {{ item.subject }}
+                      <span v-if="item.classroom" class="classroom-badge">{{ item.classroom }}</span>
+                      <span v-if="item.is_absent" class="absent-badge">휴강</span>
+                    </div>
+                  </div>
+                </li>
+              </ul>
+            </div>
+          </template>
+
+          <!-- 특강 및 한국어 수업 -->
+          <div v-if="getSpecialClasses().length > 0" class="special-section">
+            <h4 class="grade-title">특강/한국어</h4>
+            <ul class="class-list">
+              <li
+                v-for="(item, index) in getSpecialClasses()"
+                :key="index"
+                class="class-card"
+              >
+                <div class="class-info">
+                  <div class="class-period">{{ item.period }}</div>
+                  <div class="class-subject">
+                    {{ item.subject }}
+                    <span v-if="item.classroom" class="classroom-badge">{{ item.classroom }}</span>
+                    <span v-if="item.is_absent" class="absent-badge">휴강</span>
+                  </div>
                 </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+              </li>
+            </ul>
+          </div>
+
+          <div v-if="!hasAnyClasses" class="no-classes">
+            해당 날짜에 수업이 없습니다.
+          </div>
+        </template>
+        <template v-else>
+          <!-- 기존 학생용 뷰 -->
+          <ul v-if="todayTimetable.length > 0" class="class-list">
+            <li
+              v-for="(item, index) in todayTimetable"
+              :key="index"
+              class="class-card"
+            >
+              <div class="class-info">
+                <div class="class-period">{{ item.period }}</div>
+                <div class="class-subject">
+                  {{ item.subject }}
+                  <span v-if="item.classroom" class="classroom-badge">{{ item.classroom }}</span>
+                  <span v-if="item.is_absent" class="absent-badge">휴강</span>
+                </div>
+              </div>
+            </li>
+          </ul>
+          <div v-else class="no-classes">
+            해당 날짜에 수업이 없습니다.
+          </div>
+        </template>
       </div>
     </div>
+    <!-- 기존 중첩된 template 제거하고 모달 div만 유지 -->
+    <!-- 적절한 위치에 버튼 추가 -->
+    <button @click="isModalOpen = true" class="line-connect-btn">LINE 연동</button>
+    <div v-if="isModalOpen" class="modal-overlay" @click.self="isModalOpen = false">
+      <div class="modal-wrapper">
+        <h2>LINE 연동</h2>
+          <p>아래 QR코드를 스캔하여 친구 추가 후, 인증번호를 보내주세요.</p>
+
+          <img
+            src="https://qr-official.line.me/gs/M_667khdmy_GW.png?oat_content=qr"
+            alt="LINE QR코드"
+            class="qr-img"
+          />
+
+          <button @click="generateCode">인증번호 받기</button>
+
+          <div v-if="authCode" class="auth-code-box">
+            <code>{{ authCode }}</code>
+            <button @click="copyToClipboard">복사</button>
+          </div>
+        </div>
+      </div>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { useNoticeStore } from '@/stores/useNoticeStore'
-import { useTimetable } from '@/composables/useTimetable'
+import { getTimetableByGradeAndDate, getTimetableByUserId } from '@/api/timetableApi'
 import axios from 'axios'
+import { Calendar } from 'v-calendar'
+import 'v-calendar/style.css'
 
 // 사용자 정보
 const user = JSON.parse(localStorage.getItem('user') || '{}')
 const userRole = user.role
 const userGrade = parseInt(user.grade)
+const isAdminOrProfessor = userRole === 'admin' || userRole === 'professor'
 
 // 공지사항
 const noticeStore = useNoticeStore()
 const notices = ref([])
 const selectedNotice = ref(null)
+
 function selectNotice(notice) {
   selectedNotice.value = notice
 }
@@ -124,11 +216,11 @@ const calendarId = 'c_30f3f7b040f8956812ff3902e0725752aa5b4ab176a7fd02f4d8327f0e
 const accessToken = localStorage.getItem('googleAccessToken')
 const events = ref([])
 const selectedEventIndex = ref(0)
+const todayEvents = computed(() => events.value)
 
 function selectEvent(index) {
   selectedEventIndex.value = index
 }
-const todayEvents = computed(() => events.value)
 
 async function fetchGoogleCalendarEvents(today) {
   if (!accessToken) return
@@ -151,53 +243,288 @@ async function fetchGoogleCalendarEvents(today) {
   }
 }
 
-// 시간표
-const { timetable, selectedDate, fetchWeekTimetable } = useTimetable()
+// 시간표 관련 상태
+const selectedDate = ref('')
 const todayTimetable = ref([])
-const mergedTimetable = ref({})
-const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
-const periods = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 
-function getClassesByDayPeriod(day, period) {
-  const classes = finalTimetable.value[day]
-  if (!classes) return []
-  return classes.filter(cls =>
-    Number(cls.start_period) <= Number(period) && Number(cls.end_period) >= Number(period)
+// Calendar setup
+const masks = {
+  weekdays: 'WWW',
+  title: 'YYYY년 MM월',
+  input: 'YYYY-MM-DD'
+}
+
+const calendarAttributes = computed(() => [
+  {
+    key: 'today',
+    dates: new Date(),
+    highlight: {
+      color: 'blue',
+      fillMode: 'light',
+    },
+  },
+])
+
+// 시간표 관련 상수
+const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
+const periods = Array.from({ length: 10 }, (_, i) => i + 1)
+const periodTimes = {
+  1: '09:00 ~ 09:50',
+  2: '10:00 ~ 10:50',
+  3: '11:00 ~ 11:50',
+  4: '12:00 ~ 12:50',
+  5: '13:00 ~ 13:50',
+  6: '14:00 ~ 14:50',
+  7: '15:00 ~ 15:50',
+  8: '16:00 ~ 16:50',
+  9: '17:00 ~ 17:50',
+  10: '18:00 ~ 18:50'
+}
+
+// 날짜 표시용 computed
+const formattedDate = computed(() => {
+  if (!selectedDate.value) return ''
+  const date = new Date(selectedDate.value)
+  return `${date.getMonth() + 1}.${date.getDate()} (${date.toLocaleDateString('ko-KR', { weekday: 'short' })})`
+})
+
+// 날짜 형식 변환 함수
+function formatDate(date) {
+  if (!date) return ''
+  
+  let d
+  if (date instanceof Date) {
+    d = date
+  } else if (typeof date === 'string') {
+    d = new Date(date)
+  } else {
+    console.error('Invalid date format:', date)
+    return ''
+  }
+
+  if (isNaN(d.getTime())) {
+    console.error('Invalid date:', date)
+    return ''
+  }
+
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+// 시간표 데이터 업데이트 함수
+async function updateTimetableData(date) {
+  try {
+    const formattedDate = formatDate(date)
+    console.log('Updating timetable for date:', formattedDate)
+
+    if (!formattedDate) {
+      throw new Error('날짜 형식이 올바르지 않습니다.')
+    }
+
+    // 선택된 날짜의 요일 구하기
+    const selectedDay = new Date(formattedDate).toLocaleString('en-US', { weekday: 'long' })
+    console.log('Selected day:', selectedDay)
+
+    let classes = []
+    
+    // 사용자 역할에 따라 시간표 로딩
+    if (userRole === 'student') {
+      // 학생은 본인의 시간표만 조회
+      const response = await getTimetableByUserId(user.id, formattedDate)
+      console.log('Student timetable raw response:', response)
+      
+      // 유효한 수업 데이터만 필터링
+      classes = Array.isArray(response) ? response.filter(cls => 
+        cls && 
+        cls.subject_name && 
+        cls.day && 
+        cls.start_period && 
+        cls.end_period &&
+        new Date(cls.start_date) <= new Date(formattedDate) &&
+        new Date(cls.end_date) >= new Date(formattedDate)
+      ) : []
+      
+    } else {
+      // 관리자/교수는 모든 학년 데이터 조회
+      const responses = await Promise.all([
+        getTimetableByGradeAndDate(1, formattedDate),
+        getTimetableByGradeAndDate(2, formattedDate),
+        getTimetableByGradeAndDate(3, formattedDate),
+        getTimetableByGradeAndDate('KOR', formattedDate)
+      ])
+
+      console.log('API Raw Responses:', responses)
+      
+      // 각 응답에서 유효한 수업 데이터만 필터링하여 병합
+      classes = responses.reduce((acc, response, index) => {
+        if (!Array.isArray(response)) return acc
+        
+        const validClasses = response.filter(cls => 
+          cls && 
+          cls.subject_name && 
+          cls.day && 
+          cls.start_period && 
+          cls.end_period &&
+          new Date(cls.start_date) <= new Date(formattedDate) &&
+          new Date(cls.end_date) >= new Date(formattedDate)
+        )
+        
+        // 학년 정보 추가 (KOR은 제외)
+        if (index < 3) {
+          return [...acc, ...validClasses.map(c => ({ ...c, grade: index + 1 }))]
+        }
+        return [...acc, ...validClasses]
+      }, [])
+    }
+
+    console.log('Filtered valid classes:', classes)
+
+    // 해당 요일의 수업만 필터링
+    const dayClasses = classes.filter(cls => {
+      // 요일이 일치하는지 확인
+      const isDayMatch = cls.day === selectedDay
+      
+      // 시작 시간과 종료 시간이 유효한지 확인
+      const hasValidTime = 
+        Number.isInteger(parseInt(cls.start_period)) && 
+        Number.isInteger(parseInt(cls.end_period)) &&
+        parseInt(cls.start_period) > 0 &&
+        parseInt(cls.end_period) <= 12 // 최대 12교시까지
+      
+      return isDayMatch && hasValidTime
+    })
+    
+    console.log('Classes for', selectedDay + ':', dayClasses)
+
+    // 시간표 데이터 매핑 및 정렬
+    todayTimetable.value = dayClasses
+      .sort((a, b) => Number(a.start_period) - Number(b.start_period))
+      .map(cls => ({
+        period: cls.start_period === cls.end_period
+          ? `${cls.start_period}교시 (${periodTimes[cls.start_period]})`
+          : `${cls.start_period}~${cls.end_period}교시 (${periodTimes[cls.start_period]} ~ ${periodTimes[cls.end_period]})`,
+        start_period: cls.start_period,
+        end_period: cls.end_period,
+        subject: `${cls.subject_name}${
+          (cls.category === '특강' || cls.category === '한국어') 
+            ? ` [${cls.level || ''}${cls.class_group ? `/${cls.class_group}반` : ''}]` 
+            : ''
+        }${cls.professor ? ` (${cls.professor})` : ''}${
+          userRole !== 'student' && cls.grade && cls.category !== '특강' && cls.category !== '한국어'
+            ? ` (${cls.grade}학년)` 
+            : ''
+        }`,
+        is_absent: Boolean(cls.is_absent),
+        classroom: cls.classroom,
+        grade: cls.grade || (cls.academic_year > 0 ? cls.academic_year : null),
+        category: cls.category || '일반',
+        level: cls.level,
+        class_group: cls.class_group
+      }))
+
+    console.log('Final timetable data:', todayTimetable.value)
+
+  } catch (error) {
+    console.error('시간표 데이터 업데이트 실패:', error)
+    console.error('Error details:', error.message)
+    todayTimetable.value = []
+  }
+}
+
+// 캘린더 날짜 선택 핸들러
+async function onDateSelect(newDate) {
+  try {
+    const dateObj = newDate.date || newDate
+    console.log('Selected date object:', dateObj)
+    
+    const formattedDate = formatDate(dateObj)
+    console.log('Formatted date for API:', formattedDate)
+    
+    if (!formattedDate) {
+      console.error('Invalid date format')
+      return
+    }
+
+    selectedDate.value = formattedDate
+    await updateTimetableData(formattedDate)
+  } catch (error) {
+    console.error('날짜 선택 처리 실패:', error)
+    todayTimetable.value = []
+  }
+}
+
+// 학년별 수업 필터링
+const getGradeClasses = (targetGrade) => {
+  return todayTimetable.value.filter(cls => 
+    (cls.grade === targetGrade || cls.academic_year === targetGrade) && 
+    cls.category !== '특강' && 
+    cls.category !== '한국어'
   )
 }
 
+// 특강 및 한국어 수업 필터링
+const getSpecialClasses = () => {
+  // 특강과 한국어 수업을 필터링
+  const specialClasses = todayTimetable.value.filter(cls => 
+    cls.category === '특강' || 
+    cls.category === '한국어'
+  )
 
-const finalTimetable = computed(() => {
-  // 학생이면 단일 timetable, 관리자/교수면 merged
-  return userRole === 'student' ? timetable.value : mergedTimetable.value
-})
-
-async function loadTimetablesForAllGrades(today) {
-  const allGrades = [1, 2, 3]
-  const temp = {}
-  for (const g of allGrades) {
-    const localRef = ref({})
-    // fetchWeekTimetable(date, grade, targetRef)
-    await fetchWeekTimetable(today, g, localRef)
-
-    for (const day of Object.keys(localRef.value)) {
-      if (!temp[day]) temp[day] = []
-      // grade 주입
-      temp[day].push(...localRef.value[day].map(cls => ({ ...cls, grade: g })))
+  // 중복 제거를 위한 Map 사용 (교시와 과목명으로 구분)
+  const uniqueMap = new Map()
+  
+  specialClasses.forEach(cls => {
+    const key = `${cls.start_period}-${cls.end_period}-${cls.subject_name}-${cls.level || ''}-${cls.class_group || ''}`
+    if (!uniqueMap.has(key)) {
+      uniqueMap.set(key, cls)
     }
-  }
-  mergedTimetable.value = temp
+  })
+
+  // Map의 값들을 배열로 변환하고 교시 순으로 정렬
+  return Array.from(uniqueMap.values())
+    .sort((a, b) => Number(a.start_period) - Number(b.start_period))
 }
 
-onMounted(async () => {
-  const today = new Date().toISOString().split('T')[0]
+// 수업 존재 여부 확인
+const hasAnyClasses = computed(() => {
+  return todayTimetable.value.length > 0
+})
 
-  // (1) 공지사항 로딩
+// 라인 버튼
+const authCode = ref("")
+const isModalOpen = ref(false)
+
+
+const generateCode = async () => {
+  const token = localStorage.getItem("accessToken")
   try {
+    const { data } = await axios.post("http://localhost:5000/api/line/generate-code", {}, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    authCode.value = data.code
+  } catch (err) {
+    console.error("❌ 인증번호 생성 실패:", err)
+  }
+}
+
+const copyToClipboard = async () => {
+  try {
+    await navigator.clipboard.writeText(authCode.value)
+    alert("인증번호가 복사되었습니다.")
+  } catch (err) {
+    alert("복사 실패!")
+  }
+}
+
+// 컴포넌트 마운트 시 초기화
+onMounted(async () => {
+  try {
+    // (1) 공지사항 로딩
     await noticeStore.getNotices()
     const fullList = noticeStore.notices || []
     if (userRole === 'student') {
-      // 해당 학년 또는 전체 공지
       notices.value = fullList
         .filter(n => !n.academic_year || n.academic_year === '전체' || parseInt(n.academic_year) === userGrade)
         .slice(0, 3)
@@ -205,38 +532,31 @@ onMounted(async () => {
       notices.value = fullList.slice(0, 3)
     }
     selectedNotice.value = notices.value[0]
-  } catch (e) {
-    console.error('공지사항 로딩 실패 ❌', e)
-  }
 
-  // (2) 일정 로딩
-  await fetchGoogleCalendarEvents(today)
-  selectedDate.value = today
+    // (2) 일정 로딩
+    const today = new Date()
+    const formattedToday = formatDate(today)
+    await fetchGoogleCalendarEvents(formattedToday)
+    
+    // (3) 시간표 로딩
+    selectedDate.value = formattedToday
+    await updateTimetableData(today)
 
-  // (3) 시간표 로딩
-  if (userRole === 'student') {
-    // 학생: 자기 학년만
-    await fetchWeekTimetable(today, userGrade)
-  } else {
-    // 관리자/교수: 모든 학년 합치기
-    await loadTimetablesForAllGrades(today)
-  }
-
-  // (4) 오늘 수업
-  const todayDay = new Date().toLocaleDateString('en-US', { weekday: 'long' })
-  const todayClasses = finalTimetable.value[todayDay] || []
-  todayTimetable.value = todayClasses.map(cls => {
-  const periodText = cls.start_period === cls.end_period
-    ? `${cls.start_period}`
-    : `${cls.start_period}교시 ~ ${cls.end_period}`
-
-  return {
-    period: periodText,
-    subject: cls.subject_name
+  } catch (error) {
+    console.error('초기 데이터 로딩 실패:', error)
+    console.error('Error details:', error.message)
   }
 })
 
-})
+const formatNoticeDate = (dateString) => {
+  if (!dateString) return ''
+  const date = new Date(dateString)
+  return date.toLocaleDateString('ko-KR', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  })
+}
 </script>
 
 <style scoped>
@@ -255,12 +575,13 @@ onMounted(async () => {
   padding: 100px 16px 40px;
   font-family: 'Noto Sans KR', sans-serif;
   gap: 32px;
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
 /* 공통 섹션 박스 */
 .section-box {
   width: 100%;
-  max-width: 960px;
   background-color: #fff;
   border-radius: 12px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
@@ -270,164 +591,283 @@ onMounted(async () => {
 
 /* 좌측 리스트 공통 */
 .schedule-list {
-  flex: 1;
-  max-width: 300px;
+  width: 300px;
+  min-width: 300px;
   border-right: 1px solid #e0e0e0;
   padding: 24px;
+  background-color: #f8fafc;
 }
+
 .schedule-list h2 {
   font-size: 20px;
   margin-bottom: 16px;
   color: #1e3a8a;
   font-weight: 600;
 }
+
 .schedule-list ul {
   list-style: none;
   padding: 0;
   margin: 0;
 }
+
 .schedule-list li {
-  padding: 12px 14px;
-  border-radius: 8px;
-  cursor: pointer;
+  padding: 16px;
   margin-bottom: 8px;
-  transition: background-color 0.2s;
-  color: #333;
+  border-radius: 8px;
+  background-color: #fff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid #e5e7eb;
 }
-.schedule-list li:hover,
+
+.schedule-list li:hover {
+  background-color: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
 .schedule-list li.active {
   background-color: #eef4ff;
-  color: #1e40af;
-  font-weight: 600;
+  border-color: #93c5fd;
 }
 
 /* 우측 상세 공통 */
 .schedule-detail {
-  flex: 2;
-  padding: 24px;
-}
-.schedule-detail h3 {
-  font-size: 22px;
-  margin-bottom: 12px;
-  color: #111827;
-  font-weight: 700;
-}
-.schedule-detail p {
-  font-size: 16px;
-  color: #374151;
-  line-height: 1.6;
-  margin-bottom: 8px;
-}
-.schedule-detail .date {
-  font-size: 14px;
-  color: #9ca3af;
-  margin-top: 16px;
+  flex: 1;
+  padding: 24px 32px;
+  background-color: #fff;
+  min-height: 400px;
 }
 
-/* 시간표 섹션 */
-.timetable-display {
-  flex: 2;
-  padding: 24px;
+/* 공지사항 스타일 */
+.notice-title {
+  font-size: 15px;
+  font-weight: 500;
+  color: #1f2937;
+  margin-bottom: 8px;
+  line-height: 1.5;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
 }
+
+.notice-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.notice-date {
+  color: #6b7280;
+}
+
+.badge-container {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.notice-badge {
+  background-color: #e2e8f0;
+  color: #475569;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.category-badge {
+  background-color: #f1f5f9;
+  color: #3b82f6;
+}
+
+.all-badge {
+  background-color: #dbeafe;
+  color: #1e40af;
+}
+
+/* 공지사항 상세 */
+.notice-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.notice-header {
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.notice-header h3 {
+  font-size: 20px;
+  font-weight: 600;
+  color: #1e3a8a;
+  margin-bottom: 12px;
+}
+
+.notice-content {
+  color: #4b5563;
+  line-height: 1.8;
+  font-size: 15px;
+  white-space: pre-wrap;
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+
+/* 시간표 스타일 */
+.timetable-display {
+  flex: 1;
+  padding: 24px 32px;
+}
+
 .timetable-display h3 {
   font-size: 20px;
   font-weight: 600;
-  margin-bottom: 12px;
+  color: #1e3a8a;
+  margin-bottom: 24px;
 }
 
-/* 전환효과 */
-.slide-fade-enter-active {
-  transition: all 0.7s ease;
-}
-.slide-fade-enter-from {
-  opacity: 0;
-  transform: translateX(10px);
-}
-.slide-fade-leave-to {
-  opacity: 0;
-  transform: translateX(-10px);
+/* 학년별 섹션 */
+.grade-section {
+  margin-bottom: 32px;
 }
 
-/* (2) 테이블: 교시 + 5요일(총 6열) 고정폭 */
-.mini-timetable {
-  width: 100%;
-  table-layout: fixed; /* 열 폭 균등 */
-  border-collapse: collapse;
-  font-size: 13px;
-  border: 1px solid #d1d5db;
-  border-radius: 12px;
-  overflow: hidden;
-  background-color: #f9fafb;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
-}
-.mini-timetable th,
-.mini-timetable td {
-  width: calc(100% / 6);
-  text-align: center;
-  vertical-align: top;
-  padding: 8px;
-  border: 1px solid #e2e8f0;
-  position: relative;
-  /* 행 높이를 강제하려면 height를 고정 + overflow 처리 필요 */
-}
-
-/* (3) 카드 박스: 한국어 줄바꿈 처리 */
-.mini-class-box {
-  display: block;
-  width: 100%;
-  box-sizing: border-box;
-  margin-bottom: 4px;
-  padding: 6px 10px;
-  font-size: 12px;
-  line-height: 1.4;
-  border-radius: 8px;
-
-  /* 최소 높이 (짧은 내용은 50px, 길면 자동 늘어남) */
-  min-height: 50px;
-
-  /* 한국어 줄바꿈(음절 이상하게 끊김 최소화) */
-  word-break: keep-all;       /* 한글 어절 단위 유지 */
-  overflow-wrap: break-word;  /* 필요 시 줄바꿈 */
-  white-space: normal;        /* 여러 줄 허용 */
-
-  background-color: #e0f2fe;
-}
-.mini-class-box strong {
-  display: block;
-  margin-bottom: 2px;
+.grade-title {
+  font-size: 16px;
   font-weight: 600;
   color: #1e3a8a;
+  margin-bottom: 16px;
+}
+
+/* 수업 카드 스타일 */
+.class-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.class-card {
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 16px;
+  transition: all 0.2s ease;
+}
+
+.class-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.class-period {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1e40af;
+}
+
+.class-subject {
+  font-size: 14px;
+  color: #1f2937;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.classroom-badge {
+  background-color: #e2e8f0;
+  color: #475569;
+  padding: 2px 8px;
+  border-radius: 12px;
   font-size: 12px;
 }
-.mini-class-box small {
-  display: block;
-  font-size: 11px;
-  color: #555;
-}
 
-/* 휴강 표시 */
-.cancel-text {
-  font-size: 11px;
-  margin-top: 4px;
-  background: #fee2e2;
-  padding: 2px 6px;
-  border-radius: 10px;
-  font-weight: 600;
-  color: #b91c1c;
-}
-.mini-class-box.cancelled {
+.absent-badge {
   background-color: #fee2e2;
   color: #b91c1c;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
 }
 
-/* 학년별 색상 */
-.grade-1 {
-  background-color: #dbf4ff; /* 연한 하늘색 */
+/* 달력 커스텀 스타일 */
+:deep(.custom-calendar) {
+  width: 100%;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  overflow: hidden;
 }
-.grade-2 {
-  background-color: #ffebb5; /* 연한 노랑 */
+
+/* 빈 상태 메시지 */
+.no-classes {
+  text-align: center;
+  padding: 40px 20px;
+  color: #6b7280;
+  background-color: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
 }
-.grade-3 {
-  background-color: #ffd5db; /* 연한 분홍 */
+
+/* 특강/한국어 섹션 */
+.special-section {
+  margin-top: 40px;
+  padding-top: 32px;
+  border-top: 2px solid #e5e7eb;
 }
+
+.special-section .grade-title {
+  color: #047857;
+}
+
+.special-section .class-card {
+  background-color: #f0fdfa;
+}
+
+/* 라인 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.4); /* 배경 어둡게 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.modal-wrapper {
+  background-color: white;
+  padding: 32px;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  max-width: 90%;
+  width: 360px;
+}
+
+
+.line-connect-btn {
+  background-color: #10b981;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background-color 0.2s;
+}
+
+.line-connect-btn:hover {
+  background-color: #059669;
+}
+
+
 </style>

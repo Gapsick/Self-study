@@ -17,6 +17,7 @@ export function useNoticeForm(initialData = {}) {
     subject_id: initialData.subject_id || null,
     is_pinned: initialData.is_pinned || false,
     file: null,
+    sendLine: true, // ✅ 이 줄 추가!
   });
 
   // 🔹 파일 업로드 핸들러
@@ -82,50 +83,6 @@ export function useNoticeForm(initialData = {}) {
     }
   }
 
-// 🔹 공지사항 저장 (작성 & 수정 통합)
-// async function submitNotice(isEdit = false, noticeId = null) {
-//   const url = isEdit
-//     ? `${API_BASE_URL}/notices/${noticeId}`
-//     : `${API_BASE_URL}/notices`;
-
-//   const formData = new FormData();
-//   formData.append("title", noticeData.value.title);
-//   formData.append("content", noticeData.value.content);
-  
-//   // ✅ academic_year 값 변환 (전체일 경우 null)
-//   const academicYear = noticeData.value.academic_year === "전체" ? null : noticeData.value.academic_year;
-//   formData.append("academic_year", academicYear);
-
-//   formData.append("subject_id", noticeData.value.subject_id || null);
-//   formData.append("is_pinned", noticeData.value.is_pinned ? "1" : "0");
-
-//   if (noticeData.value.file) {
-//     formData.append("file", noticeData.value.file);
-//   }
-
-//   const user = JSON.parse(localStorage.getItem("user"));
-//   const userName = user?.name || "관리자";
-//   formData.append("author", userName);
-
-//   console.log("🚀 전송할 FormData:", [...formData.entries()]);
-
-//   try {
-//     const response = await fetch(url, {
-//       method: isEdit ? "PUT" : "POST",
-//       body: formData,
-//     });
-
-//     const result = await response.json();
-//     if (!response.ok) throw new Error(result.message);
-//     return true;
-//   } catch (error) {
-//     console.error("❌ 공지사항 업로드 실패:", error);
-//     return false;
-//   }
-// }
-
-//   return { noticeData, handleFileUpload, submitNotice };
-
   // 🔹 공지사항 작성
   async function createNotice() {
     const formData = prepareFormData();
@@ -146,6 +103,7 @@ export function useNoticeForm(initialData = {}) {
     formData.append("academic_year", noticeData.value.academic_year === "전체" ? null : noticeData.value.academic_year);
     formData.append("subject_id", noticeData.value.subject_id || null);
     formData.append("is_pinned", noticeData.value.is_pinned ? "1" : "0");
+    formData.append("sendLine", noticeData.value.sendLine ? "1" : "0"); // ✅ 이 줄 추가
 
     if (noticeData.value.file) {
       formData.append("file", noticeData.value.file);

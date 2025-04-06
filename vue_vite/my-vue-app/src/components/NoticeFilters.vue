@@ -75,9 +75,6 @@ export default defineComponent({
     const regularSubjects = computed(() => {
     if (localYear.value === "전체") return [];
 
-    console.log("🧪 전체 subjects 목록:", props.subjects);
-    console.log("🧪 현재 선택된 학년:", localYear.value);
-
       return props.subjects.filter((s) =>
         s.category === "정규" && String(s.academic_year) === String(localYear.value)
       );

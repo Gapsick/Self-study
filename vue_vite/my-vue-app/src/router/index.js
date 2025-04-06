@@ -17,12 +17,15 @@ import NoticeEdit from "@/views/NoticeEdit.vue"
 
 import Timetable from "@/views/Timetable.vue"
 
+import LineConnect from "@/views/LineConnect.vue"
+
 const routes = [
   { path: "/", component: Login },
   { path: "/main", component: Main },
   { path: "/login", component: Login },
   { path: "/schedule", component: Schedule },
   { path: "/register", component: Register },
+  { path: "/line-connect", component: LineConnect },
 
   // 부모 라우트: /admin -> 자식 라우트: /admin/users ...
   {

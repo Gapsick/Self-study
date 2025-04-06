@@ -114,6 +114,13 @@
                 <small>{{ cls.professor }}</small><br />
                 <small>{{ cls.level }}</small>
               </template>
+
+              <!-- ✅ 공휴일 -->
+              <template v-else-if="cls.category === '공휴일'">
+                <span class="badge badge-cancel">📅 공휴일</span>
+                <strong>{{ cls.subject_name }}</strong>
+              </template>
+
             </div>
           </td>
         </tr>
@@ -149,9 +156,11 @@ import { Korean } from 'flatpickr/dist/l10n/ko.js'
 import OverlappingModal from '@/components/OverlappingModal.vue'
 
 
-const { timetable, selectedDate, grade, fetchWeekTimetable, goToPreviousWeek, goToNextWeek } = useTimetable()
+const { timetable, selectedDate, grade, fetchWeekTimetable, goToPreviousWeek, goToNextWeek, publicHolidays } = useTimetable()
 
 const user = JSON.parse(localStorage.getItem('user') || '{}')
+user.is_foreign = Number(user.is_foreign || 0)
+
 const isAdminOrProfessor = user.role === 'admin' || user.role === 'professor'
 
 const today = new Date().toISOString().split("T")[0]
@@ -219,7 +228,60 @@ const periodTimes = {
   12: '20:00 ~ 20:50',
 }
 
+// 공휴일 함수
+function isHoliday(day) {
+  if (!selectedDate.value) return false
+
+  const weekDates = getWeekDates(selectedDate.value)
+  const dateStr = weekDates[days.indexOf(day)]
+
+  return publicHolidays.value.some(holiday => holiday.date === dateStr)
+}
+
+function getWeekDates(baseDate) {
+  if (!baseDate || isNaN(new Date(baseDate))) {
+    // console.warn('[getWeekDates] 잘못된 날짜:', baseDate)
+    return []
+  }
+
+  const date = new Date(baseDate)
+  const day = date.getDay()
+  const monday = new Date(date)
+  monday.setDate(date.getDate() - ((day + 6) % 7))
+  const week = []
+  for (let i = 0; i < 5; i++) {
+    const d = new Date(monday)
+    d.setDate(monday.getDate() + i)
+    week.push(d.toISOString().split('T')[0])
+  }
+  return week
+}
+
+
 function getClassesForMergedCell(day, period) {
+  const weekDates = getWeekDates(selectedDate.value)
+  const dateStr = weekDates[days.indexOf(day)]
+
+  // ✅ 공휴일은 해당 요일의 1교시에만 표시
+  if (period === 1) {
+    const holiday = publicHolidays.value.find(h => h.date === dateStr)
+    if (holiday) {
+      return [{
+        id: `holiday-${day}-1`,
+        category: '공휴일',
+        subject_name: holiday.name,
+        professor: '',
+        start_period: 1,
+        end_period: 1
+      }]
+    }
+  }
+
+  // ✅ 다른 교시는 공휴일 표시 안 함
+  if (publicHolidays.value.some(h => h.date === dateStr)) {
+    return []
+  }
+
   const isAdmin = user.role === 'admin' || user.role === 'professor'
   const classes = timetable.value[day] || []
 
@@ -234,7 +296,6 @@ function getClassesForMergedCell(day, period) {
 
   // 디버깅 로그
   const isMatch = Number(c.academic_year) === Number(grade.value)
-  console.log(`🎯 정규 비교: {academic_year: ${c.academic_year}, gradeValue: ${grade.value}, result: ${isMatch}}`)
 
   if (user.role === 'admin' || user.role === 'professor') return true
   return isMatch
@@ -256,14 +317,27 @@ function getClassesForMergedCell(day, period) {
     specialsToPush = specials
   }
 
-  const koreans = startOnly.filter(
-    c => c.category === '한국어' && user.is_foreign === 1
-  )
+  const getLevelNumber = (text) => {
+  if (!text) return ''
+  const match = text.match(/\d+/)
+  return match ? match[0] : ''
+}
+
+const koreans = startOnly.filter(c => {
+  const isKoreanClass = c.category === '한국어'
+  const cLevel = getLevelNumber(c.level)
+  const userLevel = getLevelNumber(user.specialLecture)
+
+  const isVisible = user.role === 'admin' || user.role === 'professor' ||
+    (user.is_foreign === 1 && cLevel === userLevel)
+
+  const shouldShow = isKoreanClass && isVisible
+
+  return shouldShow
+  })
 
   return [...regulars, ...specialsToPush, ...koreans]
 }
-
-
 
 function onDateChange() {
   fetchWeekTimetable(selectedDate.value)
@@ -274,15 +348,12 @@ function changeGrade(newGrade) {
   fetchWeekTimetable(selectedDate.value, newGrade)
 }
 
-
 // 수정용 함수
 function onEditOverlappedClass(cls) {
   selectedClass.value = cls
   showModal.value = true
   showOverlapModal.value = false
 }
-
-
 
 // 드레그 함수
 const dragStart = ref(null)
@@ -441,7 +512,6 @@ function onSaved() {
 onMounted(() => {
   selectedDate.value = today
   fetchWeekTimetable(today).then(() => {
-    console.log("📅 오늘 시간표:", timetable.value)
   })
 })
 </script>

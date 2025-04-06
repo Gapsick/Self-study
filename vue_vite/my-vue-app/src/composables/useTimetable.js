@@ -11,10 +11,45 @@ export function useTimetable() {
   })
 
   const selectedDate = ref('')
-
   const user = JSON.parse(localStorage.getItem('user') || '{}')
   const isAdminOrProfessor = user.role === 'admin' || user.role === 'professor'
   const grade = ref(Number(user.grade || 1)) // ✅ localStorage에서 가져온 사용자 학년 반영
+  
+  // 공휴일 데이터 추가
+  const publicHolidays = ref([])
+
+  function getWeekDates(baseDate) {
+    const date = new Date(baseDate)
+    const day = date.getDay()
+    const monday = new Date(date)
+    monday.setDate(date.getDate() - ((day + 6) % 7))
+    const week = []
+    for (let i = 0; i < 5; i++) {
+      const d = new Date(monday)
+      d.setDate(monday.getDate() + i)
+      week.push(d.toISOString().split('T')[0])
+    }
+    return week
+  }
+
+  // 공휴일 데이터 가져오기
+  const fetchPublicHolidays = async () => {
+    const year = new Date(selectedDate.value).getFullYear()
+    const month = String(new Date(selectedDate.value).getMonth() + 1).padStart(2, '0')
+
+    try {
+      const response = await fetch(`/api/public-holidays?year=${year}&month=${month}`)
+      const data = await response.json()
+      publicHolidays.value = data // 공휴일 데이터를 저장
+    } catch (err) {
+      console.error('공휴일 데이터를 불러오는 데 실패했습니다.', err)
+    }
+  }
+
+  // 날짜가 공휴일인지 확인
+  const isHoliday = (date) => {
+    return publicHolidays.value.some(holiday => holiday.date === date)
+  }
 
   function getWeekDates(baseDate) {
     const date = new Date(baseDate)
@@ -32,6 +67,7 @@ export function useTimetable() {
 
   const fetchWeekTimetable = async (date, useGrade, targetRef) => {
     selectedDate.value = date
+    await fetchPublicHolidays()  // 공휴일 정보 가져오기
     const dates = getWeekDates(date)
 
     const schedule = {
@@ -45,8 +81,23 @@ export function useTimetable() {
     await Promise.all(
       dates.map(async (d) => {
         const dayName = new Date(d).toLocaleString('en-US', { weekday: 'long' })
-    
+        
+        if (isHoliday(d)) {
+          const holidayName = publicHolidays.value.find(h => h.date === d)?.name || '공휴일'
+          schedule[dayName] = [{
+            id: `holiday-${dayName}`,
+            category: '공휴일',
+            subject_name: holidayName, // ✅ 이름 표시
+            professor: '',
+            start_period: 1,
+            end_period: 1  // ✅ 1교시에만 표시
+          }]
+          return
+        }
+        
+
         let classes = []
+
         if (isAdminOrProfessor) {
           const actualGrade = useGrade ?? grade.value
     
@@ -55,7 +106,6 @@ export function useTimetable() {
             getTimetableByGradeAndDate(actualGrade, d),
             getTimetableByGradeAndDate("KOR", d),
           ])
-    
           classes = [...regularAndSpecial, ...korean]
         } else {
           // ✅ 학생은 본인 기준으로 조회
@@ -66,14 +116,13 @@ export function useTimetable() {
             c.day === dayName
           )
         }
-    
+
         schedule[dayName] = classes.map(c => ({
           ...c,
           is_absent: c.is_absent === 1, // ✅ 명확하게 boolean으로 변환
         }))
       })
     )
-    
 
     if (targetRef) {
       targetRef.value = schedule
@@ -121,6 +170,8 @@ export function useTimetable() {
     updateClass,
     removeClass,
     goToPreviousWeek,
-    goToNextWeek 
+    goToNextWeek,
+    publicHolidays, // ✅ 추가
+    isHoliday        // ✅ 추가
   }
 }

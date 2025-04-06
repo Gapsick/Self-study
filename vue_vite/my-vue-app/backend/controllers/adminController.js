@@ -4,8 +4,8 @@ const db = require("../config/db");
 const getPendingUsers = async (req, res) => {
   try {
     const [results] = await db.promise().query(
-      "SELECT name, email, student_id, phone, is_verified FROM users WHERE is_verified = 0"
-    );
+      "SELECT name, email, student_id, phone, grade, is_foreign, is_verified FROM users WHERE is_verified = 0"
+    );    
     res.json({ users: results });
   } catch (err) {
     res.status(500).json({ message: "❌ 서버 오류", error: err });

@@ -68,6 +68,12 @@
         <input id="pin" type="checkbox" v-model="noticeData.is_pinned" />
       </div>
 
+      <!-- ✅ LINE 발송 여부 체크박스 -->
+      <div class="form-group switch-container">
+        <label for="sendLine">LINE으로 발송</label>
+        <input id="sendLine" type="checkbox" v-model="noticeData.sendLine" />
+      </div>
+
       <div class="button-group">
         <button type="submit" class="submit-btn">작성</button>
         <button type="button" class="cancel-btn" @click="cancelWrite">취소</button>

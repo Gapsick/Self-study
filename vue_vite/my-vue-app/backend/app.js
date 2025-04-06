@@ -20,6 +20,7 @@ const noticeRoutes = require("./routes/noticeRoutes");
 const subjectRoutes = require("./routes/subjectRoutes");
 const timetableRoutes = require("./routes/timetable");
 const holidayRoutes = require("./routes/holidays");
+const publicHolidays = require("./routes/publicHolidays")
 
 const path = require("path");
 const fs = require("fs");
@@ -62,6 +63,7 @@ app.use("/api/notices", noticeRoutes);
 app.use("/api/subjects", subjectRoutes);
 app.use("/api", timetableRoutes);
 app.use("/api/holidays", holidayRoutes);
+app.use("/api", publicHolidays)
 
 // ✅ 서버 실행
 const PORT = process.env.PORT || 5000;

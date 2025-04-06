@@ -21,8 +21,8 @@
           <td>{{ user.email }}</td>
           <td>{{ user.student_id }}</td>
           <td>{{ user.phone }}</td>
-          <td>{{ user.grade }}</td>
-          <td>{{ user.is_foreign ? "예" : "아니오" }}</td>
+          <td>{{ user.grade !== undefined && user.grade !== null ? `${user.grade}학년` : '미지정' }}</td>
+          <td>{{ user.is_foreign === 1 || user.is_foreign === true ? "예" : "아니오" }}</td>
 
           <!-- ✅ 역할 선택 -->
           <td>
