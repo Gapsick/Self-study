@@ -1,181 +1,184 @@
 <template>
-  <div class="filters-container">
-    <div class="filters-right">
+  <div class="filters">
+    <!-- 학년 선택 -->
+    <select v-model="localYear" @change="emitFilter">
+      <option value="전체">전체 학년</option>
+      <option v-if="userRole === 'student'" :value="userGrade">{{ userGrade }}학년</option>
+      <option v-else value="1">1학년</option>
+      <option v-else value="2">2학년</option>
+      <option v-else value="3">3학년</option>
+      <option v-if="canViewSpecial" value="특강">특강</option>
+      <option v-if="canViewKorean" value="한국어">한국어</option>
+    </select>
 
-      <!-- 학년 선택 -->
-      <select v-model="localYear" @change="emitFilter">
-        <option value="전체">전체 학년</option>
-        <template v-if="userRole === 'student'">
-          <option :value="userGrade">{{ userGrade }}학년</option>
-        </template>
-        <template v-else>
-          <option value="1">1학년</option>
-          <option value="2">2학년</option>
-          <option value="3">3학년</option>
-        </template>
-      </select>
+    <!-- 과목 선택 -->
+    <select v-model="localSubject" @change="emitFilter">
+      <option value="전체">
+        {{ localYear !== '전체' ? `${localYear} 전체 공지` : '전체 대상' }}
+      </option>
+      <option
+        v-for="subject in filteredSubjects"
+        :key="subject.id"
+        :value="subject.id"
+      >
+        {{ subject.name }}
+      </option>
+    </select>
 
-      <!-- 과목 선택 -->
-      <select v-model="localSubject" @change="emitFilter">
-        <option value="전체">
-          {{ localYear !== '전체' ? `${localYear}학년 전체 공지` : '전체 대상' }}
-        </option>
-
-        <!-- 정규 과목 -->
-        <optgroup label="정규 과목" v-if="localYear !== '전체'">
-          <option
-            v-for="subject in regularSubjects"
-            :key="subject.id"
-            :value="subject.id"
-          >
-            {{ subject.name }}
-          </option>
-        </optgroup>
-
-        <!-- 특강 -->
-        <optgroup label="특강" v-if="localYear !== '전체'">
-          <option
-            v-for="subject in specialSubjects"
-            :key="subject.id"
-            :value="subject.id"
-          >
-            [특객] {{ subject.name }}
-          </option>
-        </optgroup>
-      </select>
-
-      <!-- 검색 -->
-      <input type="text" v-model="searchText" @keyup.enter="emitSearch" placeholder="검색어" />
-      <button @click="emitSearch" class="rounded-btn">검색</button>
-      <button @click="emitReset" class="rounded-btn gray">초기화</button>
-    </div>
+    <!-- 검색 -->
+    <input
+      type="text"
+      v-model="searchText"
+      @keyup.enter="emitSearch"
+      placeholder="검색어"
+      class="search-input"
+    />
+    <button @click="emitSearch" class="rounded-btn">검색</button>
+    <button @click="emitReset" class="rounded-btn gray">초기화</button>
   </div>
 </template>
 
 <script>
-import { ref, defineComponent, computed, watch } from "vue";
+import { ref, computed, defineComponent } from 'vue';
 
 export default defineComponent({
   props: {
-    searchQuery: String,
     selectedYear: String,
     selectedSubject: String,
+    searchQuery: String,
     subjects: Array,
   },
   setup(props, { emit }) {
-    const user = JSON.parse(localStorage.getItem("user") || "{}");
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
     const userRole = user.role;
-    const userGrade = parseInt(user.grade || "1");
-    const userSpecialLecture = user.specialLecture || "";
+    const userGrade = String(user.grade || '');
+    const userLevel = user.specialLecture || '';
+    const userClass = user.class_group || '';
+    const isForeign = user.is_foreign === 1;
 
-    const searchText = ref(props.searchQuery);
+    const canViewSpecial = userRole !== 'student' || (userLevel && userClass);
+    const canViewKorean = userRole !== 'student' || isForeign;
+
     const localYear = ref(props.selectedYear);
     const localSubject = ref(props.selectedSubject);
+    const searchText = ref(props.searchQuery);
 
-    const regularSubjects = computed(() => {
-    if (localYear.value === "전체") return [];
+    const filteredSubjects = computed(() => {
+      const year = localYear.value;
+      const subs = props.subjects;
 
-      return props.subjects.filter((s) =>
-        s.category === "정규" && String(s.academic_year) === String(localYear.value)
-      );
-    });
+      if (year === '전체') return [];
 
-    const specialSubjects = computed(() => {
-      if (localYear.value === '전체') return [];
-      if (userRole === "student") {
-        return props.subjects.filter(
-          (s) => s.category === "특강" && s.name.includes(userSpecialLecture)
+      if (['1', '2', '3'].includes(year)) {
+        return subs.filter(
+          (s) => String(s.academic_year) === year && s.category === '정규'
         );
-      } else {
-        return props.subjects.filter((s) => s.category === "특강");
       }
+
+      if (year === '특강') {
+        if (userRole === 'student') {
+          if (!userLevel || !userClass) return [];
+          return subs.filter(
+            (s) =>
+              s.category === '특강' &&
+              s.level === userLevel &&
+              (s.class_group === userClass || s.class_group === '전체')
+          );
+        } else {
+          return subs.filter((s) => s.category === '특강');
+        }
+      }
+
+      if (year === '한국어') {
+        if (userRole === 'student' && !isForeign) return [];
+        return subs.filter(
+          (s) =>
+            s.category === '한국어' &&
+            (userRole !== 'student' || s.level === userLevel)
+        );
+      }
+
+      return [];
     });
+
+    const emitFilter = () => {
+      emit('update:selectedYear', localYear.value);
+      emit('update:selectedSubject', localSubject.value);
+    };
 
     const emitSearch = () => {
-      emit("update:searchQuery", searchText.value);
-    };
-    const emitFilter = () => {
-      emit("update:selectedYear", localYear.value);
-      emit("update:selectedSubject", localSubject.value);
-    };
-    const emitReset = () => {
-      searchText.value = "";
-      localYear.value = "전체";
-      localSubject.value = "전체";
-      emit("update:searchQuery", "");
-      emit("update:selectedYear", "전체");
-      emit("update:selectedSubject", "전체");
+      emit('update:searchQuery', searchText.value);
     };
 
-    watch(() => props.searchQuery, (v) => (searchText.value = v));
-    watch(() => props.selectedYear, (v) => (localYear.value = v));
-    watch(() => props.selectedSubject, (v) => (localSubject.value = v));
-    watch(localYear, (newYear, oldYear) => {
-      if (newYear !== oldYear) {
-        localSubject.value = "전체";
-        emit("update:selectedSubject", "전체");
-      }
-    });
+    const emitReset = () => {
+      localYear.value = '전체';
+      localSubject.value = '전체';
+      searchText.value = '';
+      emit('update:selectedYear', '전체');
+      emit('update:selectedSubject', '전체');
+      emit('update:searchQuery', '');
+    };
 
     return {
       userRole,
       userGrade,
-      searchText,
+      canViewSpecial,
+      canViewKorean,
       localYear,
       localSubject,
-      regularSubjects,
-      specialSubjects,
-      emitSearch,
+      searchText,
+      filteredSubjects,
       emitFilter,
+      emitSearch,
       emitReset,
     };
   },
 });
 </script>
 
-
 <style scoped>
-.filters-container {
-  display: flex;
-  justify-content: flex-end;
-  margin-bottom: 16px;
-  margin-top: -30px;
-  padding-right: 8px;
-}
-
-.filters-right {
+.filters {
   display: flex;
   align-items: center;
   gap: 8px;
+  margin-bottom: 16px;
 }
 
-input[type="text"],
+.search-input {
+  padding: 6px 12px;
+  width: 200px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
 select {
   padding: 6px 12px;
-  border-radius: 8px;
-  border: 1px solid #ccc;
+  border-radius: 4px;
+  border: 1px solid #ddd;
+  font-size: 14px;
+  min-width: 120px;
 }
 
 .rounded-btn {
   padding: 6px 12px;
   border: none;
-  border-radius: 20px;
-  background-color: #3b82f6;
+  border-radius: 4px;
+  background-color: #1d4ed8;
   color: white;
+  font-size: 14px;
   cursor: pointer;
-  transition: background-color 0.2s;
 }
 
 .rounded-btn:hover {
-  background-color: #2563eb;
+  background-color: #1e40af;
 }
 
 .rounded-btn.gray {
-  background-color: #e5e7eb;
-  color: #333;
+  background-color: #f3f4f6;
+  color: #374151;
 }
 
 .rounded-btn.gray:hover {
-  background-color: #d1d5db;
+  background-color: #e5e7eb;
 }
 </style>

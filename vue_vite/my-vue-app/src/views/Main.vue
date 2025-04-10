@@ -163,28 +163,6 @@
         </template>
       </div>
     </div>
-    <!-- 기존 중첩된 template 제거하고 모달 div만 유지 -->
-    <!-- 적절한 위치에 버튼 추가 -->
-    <button @click="isModalOpen = true" class="line-connect-btn">LINE 연동</button>
-    <div v-if="isModalOpen" class="modal-overlay" @click.self="isModalOpen = false">
-      <div class="modal-wrapper">
-        <h2>LINE 연동</h2>
-          <p>아래 QR코드를 스캔하여 친구 추가 후, 인증번호를 보내주세요.</p>
-
-          <img
-            src="https://qr-official.line.me/gs/M_667khdmy_GW.png?oat_content=qr"
-            alt="LINE QR코드"
-            class="qr-img"
-          />
-
-          <button @click="generateCode">인증번호 받기</button>
-
-          <div v-if="authCode" class="auth-code-box">
-            <code>{{ authCode }}</code>
-            <button @click="copyToClipboard">복사</button>
-          </div>
-        </div>
-      </div>
   </div>
 </template>
 
@@ -492,31 +470,6 @@ const hasAnyClasses = computed(() => {
   return todayTimetable.value.length > 0
 })
 
-// 라인 버튼
-const authCode = ref("")
-const isModalOpen = ref(false)
-
-
-const generateCode = async () => {
-  const token = localStorage.getItem("accessToken")
-  try {
-    const { data } = await axios.post("http://localhost:5000/api/line/generate-code", {}, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    authCode.value = data.code
-  } catch (err) {
-    console.error("❌ 인증번호 생성 실패:", err)
-  }
-}
-
-const copyToClipboard = async () => {
-  try {
-    await navigator.clipboard.writeText(authCode.value)
-    alert("인증번호가 복사되었습니다.")
-  } catch (err) {
-    alert("복사 실패!")
-  }
-}
 
 // 컴포넌트 마운트 시 초기화
 onMounted(async () => {
@@ -830,44 +783,5 @@ const formatNoticeDate = (dateString) => {
 .special-section .class-card {
   background-color: #f0fdfa;
 }
-
-/* 라인 */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.4); /* 배경 어둡게 */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-.modal-wrapper {
-  background-color: white;
-  padding: 32px;
-  border-radius: 12px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
-  max-width: 90%;
-  width: 360px;
-}
-
-
-.line-connect-btn {
-  background-color: #10b981;
-  color: white;
-  padding: 10px 20px;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: bold;
-  transition: background-color 0.2s;
-}
-
-.line-connect-btn:hover {
-  background-color: #059669;
-}
-
 
 </style>

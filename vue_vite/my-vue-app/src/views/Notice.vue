@@ -1,12 +1,18 @@
 <template>
+  <br><br>
   <div class="notice-container">
     <div class="notice-header">
-      <h2>📢 공지사항</h2>
-      <button v-if="isAdmin" @click="goToWritePage" class="write-btn">+ 새 공지 작성</button>
+      <h2>NOTICE</h2>
+      <div class="notice-subtitle">공지사항</div>
     </div>
 
-    <!-- 필터 + 새 공지 버튼 -->
-    <div class="notice-filters">
+    <div class="notice-top">
+      <div class="write-btn-container">
+        <button v-if="isAdmin" @click="goToWritePage" class="write-btn">+ 새 공지 작성</button>
+      </div>
+    </div>
+
+    <div class="search-area">
       <NoticeFilters
         v-model:searchQuery="searchQuery"
         v-model:selectedYear="selectedYear"
@@ -15,50 +21,50 @@
       />
     </div>
 
-    <p v-if="isLoading" class="loading-text">🔄 공지사항을 불러오는 중입니다...</p>
+    <div class="notice-content">
+      <p v-if="isLoading" class="loading-text">🔄 공지사항을 불러오는 중입니다...</p>
 
-    <table v-else-if="filterNotices.length > 0" class="notice-table">
-      <thead>
-        <tr>
-          <th>번호</th>
-          <th>제목</th>
-          <th>대상학년</th>
-          <th>과목</th>
-          <th>작성자</th>
-          <th>작성일</th>
-          <th>조회수</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="(notice, index) in paginatedNotices" :key="notice.id">
-        <td>{{ (currentPage - 1) * itemsPerPage + index + 1 }}</td>
-        <td>
-          <router-link :to="`/notices/${notice.id}`" class="notice-title-link">
-            <strong>{{ notice.title }}</strong>
-            <span v-if="notice.is_pinned" class="pin">📌</span>
-          </router-link>
-        </td>
-        <td>{{ notice.academic_year ? `${notice.academic_year}학년` : "전체" }}</td>
-        <td>{{ getSubjectName(notice.subject_id, notice.academic_year) }}</td>
-        <td>{{ notice.author || "관리자" }}</td>
-        <td>{{ formatDate(notice.created_at) }}</td>
-        <td>{{ notice.views || 0 }}</td>
-      </tr>
-    </tbody>
-    </table>
+      <table v-else-if="filterNotices.length > 0" class="notice-table">
+        <thead>
+          <tr>
+            <th>번호</th>
+            <th>제목</th>
+            <th>대상학년</th>
+            <th>과목</th>
+            <th>작성자</th>
+            <th>작성일</th>
+            <th>조회수</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="(notice, index) in paginatedNotices" :key="notice.id">
+            <td>{{ (currentPage - 1) * itemsPerPage + index + 1 }}</td>
+            <td>
+              <router-link :to="`/notices/${notice.id}`" class="notice-title-link">
+                <strong>{{ notice.title }}</strong>
+                <span v-if="notice.is_pinned" class="pin">📌</span>
+              </router-link>
+            </td>
+            <td>{{ notice.academic_year ? `${notice.academic_year}학년` : "전체" }}</td>
+            <td>{{ getSubjectName(notice.subject_id, notice.academic_year) }}</td>
+            <td>{{ notice.author || "관리자" }}</td>
+            <td>{{ formatDate(notice.created_at) }}</td>
+            <td>{{ notice.views || 0 }}</td>
+          </tr>
+        </tbody>
+      </table>
 
-    <p v-else class="empty-text">📢 현재 등록된 공지사항이 없습니다.</p>
+      <p v-else class="empty-text">📢 현재 등록된 공지사항이 없습니다.</p>
+
+      <div class="pagination">
+        <button @click="currentPage--" :disabled="currentPage === 1"><</button>
+        <span v-for="page in totalPages" :key="page">
+          <button @click="currentPage = page" :class="{ active: currentPage === page }">{{ page }}</button>
+        </span>
+        <button @click="currentPage++" :disabled="currentPage === totalPages">></button>
+      </div>
+    </div>
   </div>
-
-  <div class="pagination">
-  <button @click="currentPage--" :disabled="currentPage === 1"><</button>
-  <span v-for="page in totalPages" :key="page">
-    <button @click="currentPage = page" :class="{ active: currentPage === page }">{{ page }}</button>
-  </span>
-  <button @click="currentPage++" :disabled="currentPage === totalPages">></button>
-</div>
-
-
 </template>
 
 <script setup>
@@ -136,17 +142,44 @@ const totalPages = computed(() => {
 
 <style scoped>
 .notice-container {
-  max-width: 1100px;
-  margin: 80px auto 40px;
-  padding: 0 20px;
+  max-width: 1200px;
+  margin: 40px auto;
+  padding: 32px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.05);
   font-family: 'Noto Sans KR', sans-serif;
 }
 
 .notice-header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.notice-header h2 {
+  font-size: 38px;
+  font-weight: 700;
+  letter-spacing: 6px;
+  color: #111827;
+  font-family: 'Arial', sans-serif;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.notice-subtitle {
+  font-size: 15px;
+  color: #555;
+  margin-top: 10px;
+}
+
+.notice-top {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
+  justify-content: flex-end;
+  margin-bottom: 20px;
+}
+
+.write-btn-container {
+  text-align: right;
 }
 
 .write-btn {
@@ -154,110 +187,167 @@ const totalPages = computed(() => {
   color: white;
   border: none;
   padding: 8px 16px;
-  border-radius: 6px;
+  border-radius: 4px;
   font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
-  transition: background-color 0.2s;
-}
-.write-btn:hover {
-  background-color: #2563eb;
+  transition: all 0.2s ease;
 }
 
-.notice-filters {
-  display: flex;
-  margin: 60px auto 40px;
-  justify-content: flex-end; /* 검색창과 버튼을 오른쪽에 정렬 */
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 5px; /* 여유 공간 추가 */
+.write-btn:hover {
+  background-color: #1e40af;
+}
+
+.search-area {
+  padding-bottom: 12px;
+  border-bottom: 1px solid #eee;
+  margin-bottom: 20px;
+}
+
+.notice-content {
+  margin-top: 15px;
 }
 
 .notice-table {
   width: 100%;
   border-collapse: collapse;
-  background: #fff;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-  border-radius: 8px;
-  overflow: hidden;
+  margin-bottom: 30px;
 }
 
 .notice-table th {
-  background-color: #f9fafb;
-  color: #374151;
+  background-color: #f8f9fa;
+  color: #111827;
   padding: 12px 16px;
   font-size: 14px;
   font-weight: 600;
-  border-bottom: 1px solid #e5e7eb;
+  text-align: left;
+  border-top: 2px solid #333;
+  border-bottom: 1px solid #ddd;
 }
 
 .notice-table td {
-  padding: 12px 16px;
-  border-bottom: 1px solid #f1f5f9;
+  padding: 14px 16px;
   font-size: 14px;
-  color: #374151;
+  color: #333;
+  border-bottom: 1px solid #eee;
+  line-height: 1.4;
+}
+
+/* 각 열의 너비 조정 */
+.notice-table th:nth-child(1), 
+.notice-table td:nth-child(1) { /* 번호 */
+  width: 70px;
+  text-align: center;
+}
+
+.notice-table th:nth-child(2), 
+.notice-table td:nth-child(2) { /* 제목 */
+  width: auto;
+}
+
+.notice-table th:nth-child(3), 
+.notice-table td:nth-child(3) { /* 대상학년 */
+  width: 90px;
+  text-align: center;
+}
+
+.notice-table th:nth-child(4), 
+.notice-table td:nth-child(4) { /* 과목 */
+  width: 110px;
+  text-align: center;
+}
+
+.notice-table th:nth-child(5), 
+.notice-table td:nth-child(5) { /* 작성자 */
+  width: 90px;
+  text-align: center;
+}
+
+.notice-table th:nth-child(6), 
+.notice-table td:nth-child(6) { /* 작성일 */
+  width: 100px;
+  text-align: center;
+}
+
+.notice-table th:nth-child(7), 
+.notice-table td:nth-child(7) { /* 조회수 */
+  width: 80px;
+  text-align: center;
 }
 
 .notice-table tr:hover {
-  background-color: #f0f4ff;
+  background-color: #f8f9fa;
 }
 
 .notice-title-link {
-  color: #1d4ed8;
+  color: #111827;
   text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .notice-title-link:hover {
   text-decoration: underline;
+  color: #1d4ed8;
+}
+
+.notice-title-link strong {
+  font-weight: 400;
 }
 
 .pin {
-  margin-left: 6px;
+  color: #dc2626;
+  font-size: 14px;
 }
 
 .loading-text,
 .empty-text {
   text-align: center;
-  color: #888;
-  margin-top: 40px;
-  font-size: 16px;
+  color: #666;
+  margin: 40px 0;
+  font-size: 15px;
 }
 
 .pagination {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   margin-top: 20px;
-  font-family: 'Noto Sans KR', sans-serif;
 }
 
 .pagination button {
-  width: 32px;
+  min-width: 32px;
   height: 32px;
-  border: none;
-  border-radius: 50%; /* 동글동글 */
-  background-color: #f3f4f6;
-  color: #374151;
+  border: 1px solid #ddd;
+  background-color: #fff;
+  color: #333;
   font-size: 14px;
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.pagination button:hover {
-  background-color: #dbeafe;
+.pagination button:hover:not(:disabled) {
+  background-color: #f8f9fa;
+  border-color: #1d4ed8;
+  color: #1d4ed8;
 }
 
 .pagination button.active {
-  background-color: #2563eb;
+  background-color: #1d4ed8;
+  border-color: #1d4ed8;
   color: white;
-  font-weight: bold;
+  font-weight: 500;
 }
 
 .pagination button:disabled {
-  background-color: #e5e7eb;
-  color: #9ca3af;
+  background-color: #f8f9fa;
+  border-color: #eee;
+  color: #999;
   cursor: not-allowed;
 }
-
-
 </style>

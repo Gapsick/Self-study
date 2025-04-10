@@ -1,15 +1,10 @@
 <template>
   <div class="container">
-    <br><br><br><br>
+    <br>
   
     <!-- 제목 -->
-    <h2 class="title">
-      {{
-        user.role === 'admin' ? '전체 시간표 (관리자용)' :
-        user.role === 'professor' ? '전체 시간표 (교수용)' :
-        `${user.name}님의 주간 시간표`
-      }}
-    </h2>
+    <h2 class="title">TIMETABLE</h2>
+    <p class="title-kr">전체 시간표 (관리자용)</p>
 
     <!-- 상단 제어 영역 -->
     <div class="header-area">
@@ -519,17 +514,27 @@ onMounted(() => {
 <style scoped>
 /* 기존 스타일 유지하면서 특강 요약 추가 */
 .container {
-  max-width: 1100px;
+  max-width: 1200px;
   margin: 0 auto;
-  padding: 0 16px;
+  padding: 0 20px;
   font-family: 'Noto Sans KR', sans-serif;
 }
 
 .title {
-  font-size: 20px;
+  font-size: 32px;
   font-weight: 700;
-  margin-bottom: 16px;
+  margin: 80px 0 16px;
   color: #1f2937;
+  text-align: center;
+  letter-spacing: 0.1em;
+}
+
+.title-kr {
+  font-size: 14px;
+  color: #6b7280;
+  text-align: center;
+  margin-bottom: 40px;
+  letter-spacing: 0.1em;
 }
 
 .header-area {

@@ -24,7 +24,7 @@
       <div v-if="isModalOpen" class="modal-overlay" @click.self="isModalOpen = false">
         <div class="modal-wrapper">
           <h2>LINE 연동</h2>
-          <p>아래 QR코드를 스캔하여 친구 추가 후, 인증번호를 보내주세요.</p>
+          <p>아래 QR코드를 스캔하여 친구 추가 후, 인증번호를 받으실 수 있습니다.</p>
   
           <img
             src="https://qr-official.line.me/gs/M_667khdmy_GW.png?oat_content=qr"
@@ -32,11 +32,14 @@
             class="qr-img"
           />
   
-          <button class="generate-btn" @click="generateCode">인증번호 받기</button>
+          <div v-if="!authCode" class="modal-actions">
+            <button class="generate-btn" @click="generateCode">인증번호 발급받기</button>
+          </div>
   
           <div v-if="authCode" class="auth-code-box">
+            <div class="auth-code-label">인증번호</div>
             <code>{{ authCode }}</code>
-            <button @click="copyToClipboard">복사</button>
+            <button @click="copyToClipboard">복사하기</button>
           </div>
         </div>
       </div>
@@ -65,16 +68,18 @@
   }
   
   const generateCode = async () => {
-    const token = localStorage.getItem("accessToken")
-    try {
-      const { data } = await axios.post("http://localhost:5000/api/line/generate-code", {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      authCode.value = data.code
-    } catch (err) {
-      console.error("❌ 인증번호 생성 실패:", err)
-    }
+  const token = localStorage.getItem("token")  // ✅ 여기 수정!
+  try {
+    const { data } = await axios.get("http://localhost:5000/api/user/generate-line-code", {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    authCode.value = data.code
+  } catch (err) {
+    console.error("❌ 인증번호 생성 실패:", err)
   }
+}
+
+
   
   const copyToClipboard = async () => {
     try {
@@ -142,11 +147,11 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    background-color: #06C755;
+    background-color: #1d4ed8;
     color: white;
     padding: 8px 16px;
     border: none;
-    border-radius: 20px;
+    border-radius: 6px;
     cursor: pointer;
     font-size: 14px;
     font-weight: 500;
@@ -154,7 +159,7 @@
   }
   
   .line-connect-btn:hover {
-    background-color: #05B34A;
+    background-color: #1e40af;
   }
   
   .line-icon {
@@ -207,6 +212,7 @@
     color: #1e3a8a;
     margin-bottom: 16px;
     font-size: 20px;
+    font-weight: 600;
   }
   
   .modal-wrapper p {
@@ -223,10 +229,14 @@
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   }
   
+  .modal-actions {
+    margin-top: 24px;
+  }
+  
   .generate-btn {
-    background-color: #06C755;
+    background-color: #1d4ed8;
     color: white;
-    padding: 10px 20px;
+    padding: 12px 24px;
     border: none;
     border-radius: 8px;
     cursor: pointer;
@@ -236,40 +246,50 @@
   }
   
   .generate-btn:hover {
-    background-color: #05B34A;
+    background-color: #1e40af;
   }
   
   .auth-code-box {
-    background-color: #f3f4f6;
-    padding: 16px;
+    background-color: #f8fafc;
+    padding: 20px;
     border-radius: 8px;
-    margin-top: 16px;
+    margin-top: 24px;
     display: flex;
+    flex-direction: column;
     align-items: center;
-    justify-content: center;
     gap: 12px;
+    border: 1px solid #e2e8f0;
+  }
+  
+  .auth-code-label {
+    font-size: 14px;
+    color: #64748b;
+    font-weight: 500;
   }
   
   .auth-code-box code {
     font-family: monospace;
-    font-size: 18px;
+    font-size: 24px;
     color: #1e3a8a;
     font-weight: 600;
+    letter-spacing: 2px;
   }
   
   .auth-code-box button {
-    background-color: #3b82f6;
+    background-color: #1d4ed8;
     color: white;
-    padding: 8px 16px;
+    padding: 8px 20px;
     border: none;
     border-radius: 6px;
     cursor: pointer;
     font-size: 14px;
+    font-weight: 500;
     transition: background-color 0.2s;
+    margin-top: 8px;
   }
   
   .auth-code-box button:hover {
-    background-color: #2563eb;
+    background-color: #1e40af;
   }
   </style>
   
