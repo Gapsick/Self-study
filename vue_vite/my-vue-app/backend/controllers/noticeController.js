@@ -1,6 +1,7 @@
 const db = require("../config/db");
 const fs = require("fs");
 const path = require("path");
+const { sendNoticeAlert } = require("../utils/lineMessageUtil");
 
 // ✅ 공지사항 목록 조회 (과목 정보 포함)
 const getNotices = async (req, res) => {
@@ -17,7 +18,6 @@ const getNotices = async (req, res) => {
 
     const [rows] = await db.promise().query(sql);
 
-    // ✅ 프론트에서 사용하기 쉽게 subject 정보 포함
     const formatted = rows.map((row) => ({
       ...row,
       subject: {
@@ -34,36 +34,57 @@ const getNotices = async (req, res) => {
   }
 };
 
-
-
-// ✅ 공지사항 상세 조회
+// ✅ 공지사항 상세 조회 (파일까지 포함)
 const getNoticeById = async (req, res) => {
   const noticeId = req.params.id;
   try {
-    
-    const updateSql = "UPDATE notices SET views = views + 1 WHERE id = ?";
-    await db.promise().query(updateSql, [noticeId]);
+    // 조회수 증가
+    await db.promise().query("UPDATE notices SET views = views + 1 WHERE id = ?", [noticeId]);
 
-    const sql = "SELECT * FROM notices WHERE id = ?";
-    const [rows] = await db.promise().query(sql, [noticeId]);
+    // 공지사항 + 과목 조인
+    const [notices] = await db.promise().query(`
+      SELECT 
+        n.*, 
+        s.name AS subject_name, 
+        s.category AS subject_category
+      FROM notices n
+      LEFT JOIN subjects s ON n.subject_id = s.id
+      WHERE n.id = ?
+    `, [noticeId]);
 
-    if (rows.length === 0) {
+    if (notices.length === 0) {
       return res.status(404).json({ message: "해당 공지사항을 찾을 수 없습니다." });
     }
-    res.json(rows[0]);
+
+    const notice = {
+      ...notices[0],
+      subject: {
+        id: notices[0].subject_id,
+        name: notices[0].subject_name,
+        category: notices[0].subject_category,
+      },
+    };
+
+    // ✅ 파일 목록 조회 추가
+    const [files] = await db.promise().query(
+      "SELECT id, file_path, original_name FROM notice_files WHERE notice_id = ?",
+      [noticeId]
+    );
+
+    notice.files = files; // 프론트에 넘길 파일 리스트
+
+    res.json(notice);
   } catch (err) {
     console.error("❌ 공지사항 상세 조회 실패:", err);
     res.status(500).json({ message: "공지사항을 불러올 수 없습니다." });
   }
 };
 
-// ✅ 공지사항 작성
-const { sendNoticeAlert } = require('../utils/lineMessageUtil');
-
+// 공지사항 작성
 const createNotice = async (req, res) => {
   try {
     console.log("📢 (createNotice) 요청된 데이터:", req.body);
-    console.log("📂 (createNotice) 업로드된 파일 정보:", req.file);
+    console.log("📂 (createNotice) 업로드된 파일들:", req.files);
 
     let {
       title,
@@ -79,44 +100,83 @@ const createNotice = async (req, res) => {
 
     const finalCategory = category || "학과";
     const finalAuthor = author || "관리자";
-    const file = req.file ? `uploads/${req.file.filename}`.replace(/\\/g, '/') : null;
 
     if (!title || !content) {
       return res.status(400).json({ message: "제목과 내용은 필수 입력값입니다." });
     }
 
-    academic_year = (academic_year === "null" || academic_year === null || academic_year === "all" || academic_year === "0")
-      ? null : parseInt(academic_year, 10);
-    subject_id = (subject_id === "null" || subject_id === null) ? null : parseInt(subject_id, 10);
+    // 🔹 academic_year 처리
+    academic_year =
+      academic_year === "null" || academic_year === "" ? null : parseInt(academic_year, 10);
+    subject_id =
+      subject_id === "null" || subject_id === "" ? null : parseInt(subject_id, 10);
 
-    // ✅ 공지사항 저장
-    const sql = `
+    // ✅ 1단계: notices 테이블에 삽입
+    const insertNoticeSql = `
       INSERT INTO notices (title, content, category, academic_year, subject_id, file_path, is_pinned, author)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, NULL, ?, ?)
     `;
-    const values = [
+    const noticeValues = [
       title,
       content,
       finalCategory,
       academic_year,
       subject_id,
-      file,
       is_pinned === "1" ? 1 : 0,
       finalAuthor,
     ];
 
-    const [result] = await db.promise().query(sql, values);
-    console.log("✅ 공지사항 작성 성공! ID:", result.insertId);
+    const [result] = await db.promise().query(insertNoticeSql, noticeValues);
+    const noticeId = result.insertId;
+    console.log("✅ 공지사항 작성 완료 ID:", noticeId);
 
-    // ✅ LINE 전송 대상 추출
+    // ✅ 2단계: notice_files 테이블에 여러 파일 insert
+    const uploadedFiles = req.files || [];
+
+    for (const file of uploadedFiles) {
+      const originalName = Buffer.from(file.originalname, "latin1").toString("utf8"); // ✅ 한글 복원
+      const cleanPath = `uploads/${file.filename}`.replace(/\\/g, "/");
+    
+      await db.promise().query(
+        `INSERT INTO notice_files (notice_id, file_path, original_name)
+         VALUES (?, ?, ?)`,
+        [result.insertId, cleanPath, originalName]
+      );
+    }
+
+    // ✅ 3단계: 공지사항 + 과목 정보 함께 조회
+    const [notices] = await db.promise().query(`
+      SELECT 
+        n.*, 
+        s.name AS subject_name, 
+        s.category AS subject_category
+      FROM notices n
+      LEFT JOIN subjects s ON n.subject_id = s.id
+      WHERE n.id = ?
+    `, [noticeId]);
+
+    const formatted = {
+      ...notices[0],
+      subject: {
+        id: notices[0].subject_id,
+        name: notices[0].subject_name,
+        category: notices[0].subject_category,
+      },
+    };
+
+    res.status(201).json(formatted);
+
+    // ✅ 4단계: LINE 알림 대상 필터링
     let userQuery = 'SELECT line_user_id FROM users WHERE line_user_id IS NOT NULL';
     let userParams = [];
 
     if (finalCategory === '한국어') {
-      userQuery += ' AND level = ?';
-      userParams.push(level);
+      if (level) {
+        userQuery += ' AND special_lecture = ?';
+        userParams.push(level);
+      }
     } else if (academic_year === 0) {
-      userQuery += ' AND level = ?';
+      userQuery += ' AND special_lecture = ?';
       userParams.push(level);
       if (class_group && class_group !== '전체') {
         userQuery += ' AND class_group = ?';
@@ -129,7 +189,7 @@ const createNotice = async (req, res) => {
 
     const [users] = await db.promise().query(userQuery, userParams);
     const userIds = users.map(user => user.line_user_id);
-    const link = `http://localhost:5173/notices/${result.insertId}`;
+    const link = `http://localhost:5173/notices/${noticeId}`;
 
     if (req.body.sendLine === "1" && userIds.length > 0) {
       await sendNoticeAlert(userIds, {
@@ -142,17 +202,14 @@ const createNotice = async (req, res) => {
         level,
         class_group,
         link,
-        file_path: file,
+        file_path: req.files.map(f => `uploads/${f.filename}`),
       });
-    }    
-
-    res.status(201).json({ message: "공지사항이 등록되었습니다!", noticeId: result.insertId });
+    }
   } catch (err) {
     console.error("❌ 공지사항 작성 실패:", err);
     res.status(500).json({ message: "공지사항을 작성할 수 없습니다." });
   }
 };
-
 
 // ✅ 공지사항 수정
 const updateNotice = async (req, res) => {
@@ -163,105 +220,68 @@ const updateNotice = async (req, res) => {
       content,
       category,
       academic_year,
-      is_pinned,
-      removeFile,
       subject_id,
+      is_pinned,
       level,
       class_group,
-      author
+      author,
+      deletedFileIds = "[]", // JSON 문자열로 들어옴
     } = req.body;
 
     const finalCategory = category || "학과";
     const finalAuthor = author || "관리자";
-    let filePath = null;
 
-    if (req.file) {
-      filePath = `uploads/${req.file.filename}`.replace(/\\/g, '/');
-    }
+    academic_year =
+      academic_year === "" || academic_year === "null" ? null : parseInt(academic_year, 10);
+    subject_id =
+      subject_id === "" || subject_id === "null" ? null : parseInt(subject_id, 10);
+    const parsedDeletedFileIds = Array.isArray(deletedFileIds)
+      ? deletedFileIds
+      : JSON.parse(deletedFileIds);
 
-    // 🔹 기존 파일 삭제 처리
-    if (removeFile === "true") {
-      const [[existingNotice]] = await db.promise().query("SELECT file_path FROM notices WHERE id = ?", [noticeId]);
-      if (existingNotice?.file_path) {
-        const oldPath = path.join(__dirname, "..", existingNotice.file_path);
-        if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
-      }
-      filePath = null;
-    }
-
-    academic_year = academic_year === "" || academic_year === "null" ? null : parseInt(academic_year, 10);
-    subject_id = subject_id === "" || subject_id === "null" ? null : parseInt(subject_id, 10);
-
-    let sql = `
-      UPDATE notices
-      SET title=?, content=?, category=?, academic_year=?, subject_id=?, is_pinned=?, file_path=?
-      WHERE id=?`;
-    let values = [
-      title,
-      content,
-      finalCategory,
-      academic_year,
-      subject_id,
-      is_pinned === "1" ? 1 : 0,
-      filePath,
-      noticeId,
-    ];
-
-    if (removeFile === "true" && !req.file) {
-      sql = `
-        UPDATE notices
-        SET title=?, content=?, category=?, academic_year=?, subject_id=?, is_pinned=?, file_path=NULL
-        WHERE id=?`;
-      values = [
+    // ✅ 1단계: 공지사항 내용 수정
+    await db.promise().query(
+      `UPDATE notices
+       SET title = ?, content = ?, category = ?, academic_year = ?, subject_id = ?, is_pinned = ?, author = ?
+       WHERE id = ?`,
+      [
         title,
         content,
         finalCategory,
         academic_year,
         subject_id,
         is_pinned === "1" ? 1 : 0,
+        finalAuthor,
         noticeId,
-      ];
-    }
+      ]
+    );
 
-    await db.promise().query(sql, values);
-    console.log("✅ 공지사항 수정 완료");
-
-    // 🔹 LINE 전송 대상 추출
-    let userQuery = 'SELECT line_user_id FROM users WHERE line_user_id IS NOT NULL';
-    let userParams = [];
-
-    if (finalCategory === '한국어') {
-      userQuery += ' AND level = ?';
-      userParams.push(level);
-    } else if (academic_year === 0) {
-      userQuery += ' AND level = ?';
-      userParams.push(level);
-      if (class_group && class_group !== '전체') {
-        userQuery += ' AND class_group = ?';
-        userParams.push(class_group);
+    // ✅ 2단계: 삭제된 파일 제거
+    for (const fileId of parsedDeletedFileIds) {
+      const [[file]] = await db
+        .promise()
+        .query("SELECT file_path FROM notice_files WHERE id = ? AND notice_id = ?", [
+          fileId,
+          noticeId,
+        ]);
+      if (file) {
+        const fullPath = path.join(__dirname, "..", file.file_path);
+        if (fs.existsSync(fullPath)) fs.unlinkSync(fullPath);
+        await db.promise().query("DELETE FROM notice_files WHERE id = ?", [fileId]);
       }
-    } else if (academic_year !== null) {
-      userQuery += ' AND grade = ?';
-      userParams.push(academic_year);
     }
 
-    const [users] = await db.promise().query(userQuery, userParams);
-    const userIds = users.map(user => user.line_user_id);
-    const link = `http://localhost:5173/notice/${noticeId}`;
+    // ✅ 3단계: 새 파일 삽입
+    const uploadedFiles = req.files || [];
+    for (const file of uploadedFiles) {
+      const originalName = Buffer.from(file.originalname, "latin1").toString("utf8");
+      const filePath = `uploads/${file.filename}`.replace(/\\/g, "/");
 
-    if (userIds.length > 0) {
-      await sendNoticeAlert(userIds, {
-        type: 'update',
-        title,
-        content,
-        author: finalAuthor,
-        academic_year,
-        category: finalCategory,
-        level,
-        class_group,
-        link,
-        file_path: filePath,
-      });
+      await db.promise().query(
+        `INSERT INTO notice_files (notice_id, file_path, original_name)
+         VALUES (?, ?, ?)`,
+        [noticeId, filePath, originalName]
+      );
     }
 
     res.json({ message: "공지사항이 수정되었습니다!" });
@@ -273,26 +293,35 @@ const updateNotice = async (req, res) => {
 
 
 
+
+
 // ✅ 공지사항 삭제
 const deleteNotice = async (req, res) => {
   const noticeId = req.params.id;
+
   try {
-    // 🔹 기존 공지사항 조회하여 파일 경로 가져오기
-    const [rows] = await db.promise().query("SELECT file_path FROM notices WHERE id = ?", [noticeId]);
+    // 🔹 1단계: 첨부파일 경로들 조회
+    const [files] = await db.promise().query(
+      "SELECT file_path FROM notice_files WHERE notice_id = ?",
+      [noticeId]
+    );
 
-    if (rows.length === 0) {
-      return res.status(404).json({ message: "해당 공지사항을 찾을 수 없습니다." });
+    // 🔹 2단계: 첨부파일 실제 파일 시스템에서 삭제
+    for (const file of files) {
+      const absolutePath = path.join(__dirname, "..", file.file_path);
+      if (fs.existsSync(absolutePath)) {
+        try {
+          fs.unlinkSync(absolutePath);
+        } catch (err) {
+          console.error("❌ 파일 삭제 실패:", err);
+        }
+      }
     }
 
-    const filePath = rows[0].file_path;
-    if (filePath) {
-      const absolutePath = path.join(__dirname, "../", filePath);
-      fs.unlink(absolutePath, (err) => {
-        if (err) console.error("❌ 파일 삭제 실패:", err);
-      });
-    }
+    // 🔹 3단계: 첨부파일 DB 레코드 삭제
+    await db.promise().query("DELETE FROM notice_files WHERE notice_id = ?", [noticeId]);
 
-    // 🔹 공지사항 삭제
+    // 🔹 4단계: 공지사항 자체 삭제
     const [result] = await db.promise().query("DELETE FROM notices WHERE id = ?", [noticeId]);
 
     if (result.affectedRows === 0) {

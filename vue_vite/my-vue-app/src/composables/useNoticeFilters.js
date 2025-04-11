@@ -19,51 +19,62 @@ export function useNoticeFilters(notices) {
 
     if (userRole.value === "student") {
       if (selectedYear.value === "전체") {
-        // 🔥 학생 + 전체 학년: '전체 대상' 공지들만 보여주고 특강 제외
         filtered = filtered.filter((n) => {
           const subject = n.subject || null;
+          const academicYear = String(n.academic_year);
           const isSpecial = subject?.category === "특강";
+          const isKorean = subject?.category === "한국어";
     
-          const isCommon = !n.academic_year || n.academic_year === 0 || n.academic_year === "전체";
-          return isCommon && !isSpecial;
-        });
-      } else {
-        // 🔥 학생 + 특정 학년: 그 학년 정규 과목 + 자신의 특강만
-        filtered = filtered.filter((n) => {
-          const subject = n.subject || null;
-          const isSpecial = subject?.category === "특강";
-          const academicYear = parseInt(n.academic_year);
-          const isMySpecial = isSpecial && subject.name.includes(userSpecialLecture);
-          return academicYear === userGrade || isMySpecial;
+          const isCommon = !n.academic_year || academicYear === "전체";
+    
+          const isMyGrade = academicYear === String(userGrade);
+          const isMySpecial = isSpecial && subject?.level === userSpecialLecture;
+          const isMyKorean = isKorean && user.is_foreign === 1 && subject?.level === userSpecialLecture;
+    
+          return isCommon || isMyGrade || isMySpecial || isMyKorean;
         });
       }
+      else if (selectedYear.value === "특강") {
+        // 🔥 학생 + 특강 선택 시: 내 level, 내 반 or 전체 반 포함된 특강만
+        filtered = filtered.filter((n) => {
+          const subject = n.subject || {};
+          const isSpecial = subject.category === "특강";
+          const isMyLevel = subject.level === userSpecialLecture;
+          const isMyClass = !subject.class_group || subject.class_group === user.class_group || subject.class_group === '전체';
+          return isSpecial && isMyLevel && isMyClass;
+        });
+      }
+      else {
+        // 🔥 학생 + 특정 학년 선택 시: 해당 학년 정규 공지 + 내 특강 포함
+        filtered = filtered.filter((n) => {
+          const subject = n.subject || {};
+          const academicYear = parseInt(n.academic_year);
+          const isSpecial = subject.category === "특강";
+          const isMySpecial = isSpecial && subject.level === userSpecialLecture &&
+            (!subject.class_group || subject.class_group === user.class_group || subject.class_group === '전체');
+          return academicYear === parseInt(selectedYear.value) || isMySpecial;
+        });
+      }      
     }
-     else {
-      // 교수/관리자
-      if (selectedYear.value !== "전체") {
+    else {
+      // 교수/관리자 필터링
+      if (selectedYear.value === "전체") {
+        // 전체 학년이면 필터 없이 모두 출력
+        filtered = filtered;
+      }
+      else if (selectedYear.value === "특강") {
+        filtered = filtered.filter((n) => n.subject?.category === "특강");
+      }
+      else if (selectedYear.value === "한국어") {
+        filtered = filtered.filter((n) => n.subject?.category === "한국어");
+      }
+      else {
+        // 정규 과목 학년 선택
         const selected = parseInt(selectedYear.value);
         filtered = filtered.filter((n) => {
           const academicYear = parseInt(n.academic_year);
           return academicYear === selected;
         });
-      } else {
-        // 교수/관리자
-        if (selectedYear.value !== "전체") {
-          const selected = parseInt(selectedYear.value);
-          filtered = filtered.filter((n) => {
-            const academicYear = parseInt(n.academic_year);
-            return academicYear === selected;
-          });
-        } else {
-          // ✅ 관리자 + 전체 학년 → 공통 공지 & 특강 제외
-          filtered = filtered.filter((n) => {
-            const subject = n.subject || null;
-            const isSpecial = subject?.category === "특강";
-      
-            const isCommon = !n.academic_year || n.academic_year === 0;
-            return isCommon && !isSpecial;
-          });
-        }
       }
     }
 

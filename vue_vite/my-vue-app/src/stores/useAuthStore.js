@@ -28,6 +28,8 @@ export const useAuthStore = defineStore("auth", {
       localStorage.removeItem("token");
       localStorage.removeItem("role");
       localStorage.removeItem("user");
+      localStorage.removeItem("googleAccessToken"); // ✅ 추가
+      localStorage.removeItem("refreshToken");      // ✅ 추가
     },
     checkAuth() {
       const token = localStorage.getItem("token");

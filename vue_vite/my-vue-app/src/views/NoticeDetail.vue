@@ -2,21 +2,32 @@
   <div class="detail-container" v-if="notice">
     <div class="header">
       <h2 class="title">{{ notice.title || "제목 없음" }}</h2>
-      <div class="meta">
-        <p><strong>학년:</strong> {{ notice.academic_year ? `${notice.academic_year}학년` : "전체" }}</p>
-        <p><strong>작성일:</strong> {{ formattedDate }}</p>
-        <p><strong>조회수:</strong> {{ notice.views || 0 }}</p>
-      </div>
     </div>
 
-    <hr class="divider" />
-
-    <!-- ✅ 첨부파일을 본문보다 위로 이동 -->
-    <div v-if="notice.file_path" class="file-box">
-      <span>📎 첨부파일:</span>
-      <button @click="downloadFile" class="file-download">
-        {{ getFileName(notice.file_path) }}
-      </button>
+    <div class="meta-info">
+      <div class="meta-row">
+        <span class="meta-label">글쓴이</span>
+        <span class="meta-value">관리자</span>
+      </div>
+      <div class="meta-row">
+        <span class="meta-label">작성일</span>
+        <span class="meta-value">{{ formattedDate }}</span>
+      </div>
+      <div class="meta-row">
+        <span class="meta-label">조회수</span>
+        <span class="meta-value">{{ notice.views || 0 }}</span>
+      </div>
+      <!-- ✅ 다중 첨부파일 표시 -->
+      <div class="meta-row file-row" v-if="notice.files && notice.files.length > 0">
+        <span class="meta-label">첨부파일</span>
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+          <div v-for="file in notice.files" :key="file.id">
+            <a :href="`http://localhost:5000/${file.file_path}`" target="_blank" class="file-download">
+               {{ file.original_name }}
+            </a>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div class="content">
@@ -73,25 +84,6 @@ export default {
       const date = new Date(notice.value.created_at);
       return `${date.getFullYear()}. ${date.getMonth() + 1}. ${date.getDate()}`;
     });
-
-    const downloadFile = () => {
-      const fileUrl = `http://localhost:5000/${notice.value.file_path}`;
-      const link = document.createElement("a");
-      link.href = fileUrl;
-      link.setAttribute("download", getFileName(notice.value.file_path));
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    };
-
-    const getFileName = (filePath) => {
-    const encodedName = filePath?.split("/").pop();
-    const decoded = decodeURIComponent(encodedName || "");
-
-    // ✅ 앞에 붙은 숫자- 제거
-    const cleaned = decoded.replace(/^\d+-/, "");
-    return cleaned || "파일 없음";
-    };
     
     const goBack = () => router.push("/notices");
     const editNotice = () => router.push(`/notices/edit/${noticeId}`);
@@ -112,8 +104,6 @@ export default {
       goBack,
       editNotice,
       deleteNotice: deleteNoticeHandler,
-      getFileName,
-      downloadFile,
     };
   }
 };
@@ -131,82 +121,89 @@ export default {
 }
 
 .header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  flex-wrap: wrap;
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 16px;
+  margin-bottom: 0;
 }
 
 .title {
-  font-size: 22px;
-  font-weight: bold;
+  font-size: 20px;
+  font-weight: 500;
   color: #111827;
-  flex: 1;
-  margin-bottom: 10px;
+  margin: 0;
 }
 
-.meta {
-  text-align: right;
+.meta-info {
+  border-bottom: 1px solid #e5e7eb;
+  margin: 0;
   font-size: 14px;
-  color: #555;
-  line-height: 1.5;
 }
 
-.divider {
-  margin: 16px 0 24px;
-  border: none;
-  height: 1px;
-  background-color: #e5e7eb;
-}
-
-.content {
-  font-size: 16px;
-  line-height: 1.7;
-  color: #333;
-  margin-bottom: 24px;
-  white-space: pre-wrap;
-}
-
-.file-box {
-  background-color: #f5f5f5;
-  padding: 12px 16px;
-  border-radius: 8px;
-  margin-bottom: 24px;
+.meta-row {
   display: flex;
+  padding: 12px 0;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.meta-row:last-child {
+  border-bottom: none;
+}
+
+.meta-label {
+  width: 100px;
+  color: #666;
+  font-weight: 500;
+}
+
+.meta-value {
+  flex: 1;
+  color: #111827;
+}
+
+.file-row {
   align-items: center;
-  gap: 12px;
-  font-size: 15px;
 }
 
 .file-download {
-  background-color: #2563eb;
-  color: white;
-  padding: 6px 12px;
-  font-size: 14px;
+  background: none;
   border: none;
-  border-radius: 6px;
+  color: #2563eb;
+  padding: 0;
+  font-size: 14px;
   cursor: pointer;
+  text-decoration: underline;
 }
 
 .file-download:hover {
-  background-color: #1d4ed8;
+  color: #1d4ed8;
+}
+
+.content {
+  padding: 24px 0;
+  font-size: 15px;
+  line-height: 1.7;
+  color: #333;
+  white-space: pre-wrap;
 }
 
 .button-group {
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
+  gap: 8px;
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #e5e7eb;
 }
 
 .edit-btn,
 .delete-btn,
 .back-btn {
-  padding: 8px 14px;
+  padding: 8px 16px;
   border-radius: 6px;
   border: none;
   font-size: 14px;
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  transition: all 0.2s ease;
 }
 
 .edit-btn {
@@ -227,9 +224,11 @@ export default {
 .edit-btn:hover {
   background-color: #eab308;
 }
+
 .delete-btn:hover {
   background-color: #dc2626;
 }
+
 .back-btn:hover {
   background-color: #2563eb;
 }

@@ -17,7 +17,7 @@
         v-model:searchQuery="searchQuery"
         v-model:selectedYear="selectedYear"
         v-model:selectedSubject="selectedSubject"
-        :subjects="subjects"
+        :subjects="subjectList"
       />
     </div>
 
@@ -45,7 +45,11 @@
                 <span v-if="notice.is_pinned" class="pin">📌</span>
               </router-link>
             </td>
-            <td>{{ notice.academic_year ? `${notice.academic_year}학년` : "전체" }}</td>
+            <td>
+              {{
+                getDisplayAcademicYear(notice)
+              }}
+            </td>
             <td>{{ getSubjectName(notice.subject_id, notice.academic_year) }}</td>
             <td>{{ notice.author || "관리자" }}</td>
             <td>{{ formatDate(notice.created_at) }}</td>
@@ -77,6 +81,7 @@ import { useSubjects } from "@/composables/useSubjects";
 import { formatDate } from "@/utils/formatUtils";
 import { useRouter } from "vue-router";
 import NoticeFilters from "@/components/NoticeFilters.vue";
+import { fetchSubjects } from "@/api/subjectApi";
 
 const router = useRouter();
 const noticeStore = useNoticeStore();
@@ -88,19 +93,23 @@ const isLoading = ref(true);
 // page navigation
 const currentPage = ref(1);
 const itemsPerPage = 10;
+const subjectList = ref([]);
 
 
 onMounted(async () => {
   isLoading.value = true;
   try {
     await noticeStore.getNotices();
-    console.log("📦 불러온 공지 목록:", notices.value); // 👈 여기 추가
+    const subjects = await fetchSubjects(); // ← 새로 추가
+    subjectList.value = subjects;
+    console.log("📚 과목 리스트:", subjectList.value);
   } catch (error) {
-    console.error("🚨 공지사항 불러오기 실패:", error);
+    console.error("🚨 데이터 불러오기 실패:", error);
   } finally {
     isLoading.value = false;
   }
 });
+
 
 watchEffect(() => {
   isLoading.value = notices.value.length === 0 || subjects.value.length === 0;
@@ -108,18 +117,34 @@ watchEffect(() => {
 
 const getSubjectName = (subjectId, noticeAcademicYear) => {
   if (!subjectId) return "공통";
-  if (!subjects.value || subjects.value.length === 0) return "로딩 중...";
+  if (!subjectList.value || subjectList.value.length === 0) return "로딩 중...";
 
-  const subject = subjects.value.find((subj) => subj.id == subjectId);
+  const subject = subjectList.value.find((subj) => subj.id == subjectId);
   if (!subject) return "알 수 없음";
 
-  // academic_year가 0(특강)이면서, 공지가 전체 학년 대상이 아닐 때만 [특강] 표시
-  if (subject.academic_year === 0 && noticeAcademicYear !== "전체") {
+  if (subject.category === "특강") {
     return `[특강] ${subject.name}`;
+  }
+
+  if (subject.category === "한국어") {
+    return `[한국어] ${subject.name}`;
   }
 
   return subject.name;
 };
+
+const getDisplayAcademicYear = (notice) => {
+  const subject = subjectList.value.find((s) => s.id == notice.subject_id);
+  if (subject?.category === "특강") return "특강";
+  if (subject?.category === "한국어") return "한국어";
+
+  if (notice.academic_year === 0) return "전체";
+  if (notice.academic_year === null || notice.academic_year === undefined) return "전체";
+
+  return `${notice.academic_year}학년`;
+};
+
+
 
 const goToWritePage = () => {
   router.push("/notices/write");
@@ -135,9 +160,6 @@ const paginatedNotices = computed(() => {
 const totalPages = computed(() => {
   return Math.ceil(filterNotices.value.length / itemsPerPage);
 });
-
-
-
 </script>
 
 <style scoped>
@@ -242,7 +264,8 @@ const totalPages = computed(() => {
 
 .notice-table th:nth-child(2), 
 .notice-table td:nth-child(2) { /* 제목 */
-  width: auto;
+  width: calc(100% - 600px); /* 전체 너비에서 다른 열들의 너비 합을 뺀 값 */
+  min-width: 200px;
 }
 
 .notice-table th:nth-child(3), 
@@ -253,8 +276,11 @@ const totalPages = computed(() => {
 
 .notice-table th:nth-child(4), 
 .notice-table td:nth-child(4) { /* 과목 */
-  width: 110px;
+  width: 180px;
   text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .notice-table th:nth-child(5), 
@@ -271,7 +297,7 @@ const totalPages = computed(() => {
 
 .notice-table th:nth-child(7), 
 .notice-table td:nth-child(7) { /* 조회수 */
-  width: 80px;
+  width: 70px;
   text-align: center;
 }
 

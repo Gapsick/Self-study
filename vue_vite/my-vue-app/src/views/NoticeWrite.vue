@@ -14,12 +14,13 @@
         <textarea id="content" v-model="noticeData.content" required></textarea>
       </div>
 
-      <!-- 분류 선택 (정규 or 특강) -->
+      <!-- 분류 -->
       <div class="form-group">
         <label for="category">분류</label>
         <select id="category" v-model="noticeData.category">
           <option value="학과">정규 과목</option>
           <option value="과목별">특강</option>
+          <option value="한국어">한국어</option>
         </select>
       </div>
 
@@ -49,31 +50,32 @@
         </select>
       </div>
 
-      <!-- 파일 첨부 -->
+      <!-- 여러 파일 첨부 -->
       <div class="form-group">
         <label>파일 첨부</label>
-        <div class="file-upload-box" v-if="fileName">
-          <span class="file-name" :title="fileName">📄 {{ fileName }}</span>
-          <button type="button" class="file-remove-btn" @click="removeFile">
-            ❌
-          </button>
+        <div
+          class="file-upload-box"
+          v-for="(name, index) in fileNames"
+          :key="index"
+        >
+          <span class="file-name">📄 {{ name }}</span>
+          <button type="button" class="file-remove-btn" @click="removeFile(index)">❌</button>
         </div>
         <label for="file-upload" class="file-label">📁 파일 선택</label>
-        <input id="file-upload" type="file" @change="handleFileUpload" hidden />
+        <input id="file-upload" type="file" multiple @change="handleFileUpload" hidden />
       </div>
 
-      <!-- 공지 고정 -->
+      <!-- 고정 및 LINE 발송 -->
       <div class="form-group switch-container">
         <label for="pin">공지 고정</label>
         <input id="pin" type="checkbox" v-model="noticeData.is_pinned" />
       </div>
-
-      <!-- ✅ LINE 발송 여부 체크박스 -->
       <div class="form-group switch-container">
         <label for="sendLine">LINE으로 발송</label>
         <input id="sendLine" type="checkbox" v-model="noticeData.sendLine" />
       </div>
 
+      <!-- 버튼 -->
       <div class="button-group">
         <button type="submit" class="submit-btn">작성</button>
         <button type="button" class="cancel-btn" @click="cancelWrite">취소</button>
@@ -88,54 +90,49 @@ import { useNoticeForm } from "@/composables/useNoticeForm";
 import { useSubjects } from "@/composables/useSubjects";
 import { useRouter } from "vue-router";
 
-const { noticeData, handleFileUpload: realFileUpload, createNotice } = useNoticeForm();
+const { noticeData, createNotice } = useNoticeForm();
 const router = useRouter();
 
 const selectedYear = ref("전체");
 const { subjects, loadSubjects } = useSubjects(selectedYear);
-const fileName = ref("");
+const fileNames = ref([]);
+noticeData.value.files = ref([]); // 여러 파일 보관
 
-// ✅ 과목 필터링: 정규(학년 기준) vs 특강(전체)
 const filteredSubjects = computed(() => {
-  if (noticeData.value.category === "과목별") {
-    return subjects.value.filter((s) => s.category === "특강");
-  }
-  return subjects.value.filter(
-    (s) => s.category === "정규" && s.academic_year == selectedYear.value
-  );
+  const category = noticeData.value.category;
+  if (category === "과목별") return subjects.value.filter((s) => s.category === "특강");
+  if (category === "한국어") return subjects.value.filter((s) => s.category === "한국어");
+  return subjects.value.filter((s) => s.category === "정규" && s.academic_year == selectedYear.value);
 });
 
 const handleFileUpload = (e) => {
-  const file = e.target.files[0];
-  if (file) {
-    fileName.value = file.name;
-    realFileUpload(e);
-  }
+  const files = Array.from(e.target.files);
+  fileNames.value.push(...files.map(f => f.name));
+  noticeData.value.files.push(...files);
 };
 
-const removeFile = () => {
-  fileName.value = "";
-  document.getElementById("file-upload").value = null;
+const removeFile = (index) => {
+  fileNames.value.splice(index, 1);
+  noticeData.value.files.splice(index, 1);
 };
 
 onMounted(async () => {
-  noticeData.value.category = "학과"; // 기본값은 정규
+  noticeData.value.category = "학과";
   await loadSubjects();
 });
 
 watch(selectedYear, async () => {
   await loadSubjects();
-  noticeData.value.academic_year =
-    selectedYear.value === "전체" ? null : Number(selectedYear.value);
+  noticeData.value.academic_year = selectedYear.value === "전체" ? null : Number(selectedYear.value);
 });
 
 const cancelWrite = () => {
-  if (confirm("작성을 취소하시겠습니까? 작성한 내용은 저장되지 않습니다.")) {
-    router.push("/notices");
-  }
+  if (confirm("작성을 취소하시겠습니까?")) router.push("/notices");
 };
 
 const submitForm = async () => {
+  const category = noticeData.value.category;
+  noticeData.value.academic_year = category === "과목별" ? 0 : category === "한국어" ? null : (selectedYear.value === "전체" ? null : Number(selectedYear.value));
   const success = await createNotice();
   if (success) {
     alert("공지사항이 작성되었습니다.");
@@ -143,7 +140,6 @@ const submitForm = async () => {
   }
 };
 </script>
-
 
 <style scoped>
 .notice-write-container {
@@ -313,4 +309,14 @@ select:focus {
   outline: none;
   border-color: #1d4ed8;
 }
+
+/* 첨부파일 */
+.preview-btn {
+  background: none;
+  border: none;
+  color: #2563eb;
+  font-size: 14px;
+  cursor: pointer;
+}
+
 </style>

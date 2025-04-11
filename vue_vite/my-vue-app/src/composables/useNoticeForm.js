@@ -16,15 +16,26 @@ export function useNoticeForm(initialData = {}) {
     academic_year: initialData.academic_year || null,
     subject_id: initialData.subject_id || null,
     is_pinned: initialData.is_pinned || false,
-    file: null,
+    files: [],
     sendLine: true, // ✅ 이 줄 추가!
   });
 
   // 🔹 파일 업로드 핸들러
-  const handleFileUpload = (event) => {
-    const file = event.target.files[0];
-    noticeData.value.file = file;
+  const handleFileUpload = async (e) => {
+    const file = e.target.files[0];
+    const formData = new FormData();
+    formData.append("file", file);
+  
+    try {
+      const res = await axios.post("/api/upload", formData);
+      // ✅ 서버가 실제 파일 경로를 반환한다고 가정 (예: res.data.url)
+      return res.data.url;
+    } catch (err) {
+      console.error("파일 업로드 실패", err);
+      return "";
+    }
   };
+  
 
   // 🔹 JWT 토큰을 포함한 요청 함수
   async function makeAuthorizedRequest(url, method, data) {
@@ -86,6 +97,27 @@ export function useNoticeForm(initialData = {}) {
   // 🔹 공지사항 작성
   async function createNotice() {
     const formData = prepareFormData();
+  
+    // ✅ 여기서 직접 noticeData.value에서 꺼내기
+    const {
+      title,
+      content,
+      category,
+      academic_year,
+      subject_id,
+      level,
+      class_group
+    } = noticeData.value;
+  
+    console.log("📦 최종 INSERT 데이터", {
+      title,
+      category,
+      academic_year,
+      subject_id,
+      level,
+      class_group
+    });
+  
     return await makeAuthorizedRequest(`${API_BASE_URL}/notices`, "post", formData);
   }
 
@@ -97,24 +129,33 @@ export function useNoticeForm(initialData = {}) {
 
   function prepareFormData() {
     const formData = new FormData();
+  
     formData.append("title", noticeData.value.title);
     formData.append("content", noticeData.value.content);
-    formData.append("category", noticeData.value.category); // ✅ 이 줄 추가
-    formData.append("academic_year", noticeData.value.academic_year === "전체" ? null : noticeData.value.academic_year);
-    formData.append("subject_id", noticeData.value.subject_id || null);
+    formData.append("category", noticeData.value.category);
+  
+    const academicYear = noticeData.value.academic_year;
+    formData.append("academic_year", academicYear != null ? String(academicYear) : "");
+  
+    const subjectId = noticeData.value.subject_id;
+    formData.append("subject_id", subjectId != null ? String(subjectId) : "");
+  
     formData.append("is_pinned", noticeData.value.is_pinned ? "1" : "0");
-    formData.append("sendLine", noticeData.value.sendLine ? "1" : "0"); // ✅ 이 줄 추가
-
-    if (noticeData.value.file) {
-      formData.append("file", noticeData.value.file);
+    formData.append("sendLine", noticeData.value.sendLine ? "1" : "0");
+  
+    // ✅ 여러 파일 추가
+    const files = noticeData.value.files || [];
+    for (const file of files) {
+      formData.append("files", file); // 🔥 여기서 이름은 반드시 백엔드의 multer field와 동일해야 함
     }
-
+  
     const user = JSON.parse(localStorage.getItem("user"));
-    const userName = user?.name || "관리자";
-    formData.append("author", userName);
-
+    formData.append("author", user?.name || "관리자");
+  
     return formData;
   }
+  
+  
 
   return {
     noticeData,

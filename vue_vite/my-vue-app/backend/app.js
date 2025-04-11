@@ -33,14 +33,42 @@ app.get("/uploads/:filename", (req, res) => {
     return res.status(404).json({ message: "파일을 찾을 수 없습니다." });
   }
 
-  const originalName = filename.replace(/^\d+-/, "");
-  const encodedFileName = encodeURIComponent(originalName);
+  const encodedFileName = encodeURIComponent(filename.replace(/^\d+-/, ""));
 
-  res.setHeader("Content-Disposition", `attachment; filename="${encodedFileName}"; filename*=UTF-8''${encodedFileName}`);
+  // ✅ 파일 이름이 한글일 경우에도 깨지지 않도록 Content-Disposition 설정
+  res.setHeader(
+    "Content-Disposition",
+    `inline; filename="${encodedFileName}"; filename*=UTF-8''${encodedFileName}`
+  );
   res.setHeader("Content-Type", "application/octet-stream");
 
-  res.download(filePath);
+  res.sendFile(filePath);
 });
+
+// ✅ 미리보기용 (inline 렌더링을 위한 전용 경로)
+app.get("/preview/:filename", (req, res) => {
+  const filename = decodeURIComponent(req.params.filename);
+  const filePath = path.join(__dirname, "uploads", filename);
+
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ message: "파일을 찾을 수 없습니다." });
+  }
+
+  const ext = path.extname(filename).toLowerCase();
+  const mimeTypes = {
+    ".pdf": "application/pdf",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".png": "image/png",
+    ".gif": "image/gif",
+  };
+  const mimeType = mimeTypes[ext] || "application/octet-stream";
+
+  res.setHeader("Content-Type", mimeType);
+  res.setHeader("Content-Disposition", "inline"); // ✅ 바로 이게 미리보기 핵심!
+  fs.createReadStream(filePath).pipe(res);
+});
+
 
 // ✅ CORS 설정
 app.use(cors({

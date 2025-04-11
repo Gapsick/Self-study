@@ -13,33 +13,34 @@ const multer = require("multer");
 // ✅ 파일 저장 경로 및 이름 설정
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, "uploads/"); // ✅ 저장할 폴더
+    cb(null, "uploads/");
   },
   filename: (req, file, cb) => {
     const timestamp = Date.now();
-  
-    // ✅ 한글 파일명 깨짐 방지: latin1 → utf8
-    const originalName = Buffer.from(file.originalname, "latin1").toString("utf8");
-  
-    // ✅ 공백 제거 및 특수문자 필터링 (선택)
-    const safeName = originalName.replace(/\s+/g, "_").replace(/[^\w가-힣.\-_]/g, "");
-  
+
+    // ✅ 기존 깨짐 방지 인코딩 제거하고, 공백 및 특수문자만 정리
+    const safeName = file.originalname
+      .replace(/\s+/g, "_")                 // 공백 → 언더바
+      .replace(/[^\w가-힣.\-()_]/g, "");     // 특수문자 제거 (괄호 등 일부는 유지)
+
     cb(null, `${timestamp}-${safeName}`);
   },
-  
 });
+
 
 const upload = multer({ storage });
 
-// ✅ 파일 업로드 문제 해결: `upload.single("file")` 필드명 확인
-router.post("/", upload.single("file"), (req, res, next) => {
-  console.log("📂 업로드된 파일:", req.file);
+// 기존: upload.single("file")
+router.post("/", upload.array("files"), async (req, res, next) => {
+  console.log("📂 업로드된 파일들:", req.files);
   next();
 }, createNotice);
 
+// 수정 라우터에서 PUT도 동일하게 변경
+router.put("/:id", upload.array("files"), updateNotice);
+
 router.get("/", getNotices);
 router.get("/:id", getNoticeById);
-router.put("/:id", upload.single("file"), updateNotice);
 router.delete("/:id", deleteNotice);
 
 module.exports = router;

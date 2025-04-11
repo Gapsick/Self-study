@@ -30,22 +30,21 @@ export async function fetchNoticeDetail(noticeId) {
 
   try {
     const response = await axios.get(`${API_BASE_URL}/notices/${noticeId}`);
-    console.log("📢 (noticeApi.js) 응답 데이터:", response.data);
+    const notice = response.data;
+    console.log("📢 (noticeApi.js) 응답 데이터:", notice);
 
-    if (!response.data || Object.keys(response.data).length === 0) {
+    if (!notice || Object.keys(notice).length === 0) {
       console.warn("❌ (noticeApi.js) 응답이 비어 있음");
       return null;
     }
 
-    // ✅ subject_id가 존재하는지 확인
-    if (!response.data.hasOwnProperty("subject_id") || response.data.subject_id === null) {
-      console.warn("⚠️ (noticeApi.js) 응답에 subject_id가 없음 → 기본값 null 유지!");
-      response.data.subject_id = null;  // ✅ 기본값을 null로 유지
-    }     else {
-      console.log("✅ (noticeApi.js) subject_id 확인:", response.data.subject_id);
+    // ✅ subject_id 안전 처리
+    if (!notice.hasOwnProperty("subject_id") || notice.subject_id === null) {
+      notice.subject_id = null;
     }
 
-    return response.data;
+    // ✅ 이제는 백엔드에서 files 배열을 직접 내려주니까, 따로 가공 필요 없음
+    return notice;
   } catch (error) {
     console.error("❌ (noticeApi.js) 공지사항 상세 조회 실패:", error);
     return null;
