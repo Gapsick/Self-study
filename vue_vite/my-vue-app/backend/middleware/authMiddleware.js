@@ -24,7 +24,7 @@ module.exports = async (req, res, next) => {
             return res.status(403).json({ message: "유효하지 않은 사용자입니다." });
         }
 
-        req.user = { email: decoded.email, role: rows[0].role }; // ✅ 역할 추가
+        req.user = { id: decoded.id, email: decoded.email, role: rows[0].role };
         console.log("✅ (authMiddleware) 검증된 유저 정보:", req.user);
         
         next();

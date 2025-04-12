@@ -166,6 +166,22 @@ const createNotice = async (req, res) => {
 
     res.status(201).json(formatted);
 
+    // 📌 subject_id로 level/class_group 자동 조회
+    level = req.body.level;
+    class_group = req.body.class_group;
+
+    if (finalCategory === '과목별' && req.body.subject_id) {
+      const [subjectRow] = await db.promise().query(
+        "SELECT level, class_group FROM subjects WHERE id = ?",
+        [req.body.subject_id]
+      );
+      if (subjectRow.length > 0) {
+        level = subjectRow[0].level;
+        class_group = subjectRow[0].class_group;
+      }
+    }
+
+
     // ✅ 4단계: LINE 알림 대상 필터링
     let userQuery = 'SELECT line_user_id FROM users WHERE line_user_id IS NOT NULL';
     let userParams = [];
@@ -178,11 +194,14 @@ const createNotice = async (req, res) => {
     } else if (academic_year === 0) {
       userQuery += ' AND special_lecture = ?';
       userParams.push(level);
+    
+      // ✅ '전체'일 경우를 포함해서 필터링
       if (class_group && class_group !== '전체') {
-        userQuery += ' AND class_group = ?';
+        userQuery += ' AND (class_group = ? OR class_group = "전체")';
         userParams.push(class_group);
       }
-    } else if (academic_year !== null) {
+    }
+     else if (academic_year !== null) {
       userQuery += ' AND grade = ?';
       userParams.push(academic_year);
     }
@@ -290,10 +309,6 @@ const updateNotice = async (req, res) => {
     res.status(500).json({ message: "공지사항을 수정할 수 없습니다." });
   }
 };
-
-
-
-
 
 // ✅ 공지사항 삭제
 const deleteNotice = async (req, res) => {

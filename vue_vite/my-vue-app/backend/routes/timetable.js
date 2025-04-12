@@ -183,6 +183,7 @@ router.get("/timetable/user/:id/date/:date", async (req, res) => {
 });
 
 
+const { sendTimetableAlert } = require("../utils/lineMessageUtil")
 // ✅ 시간표 추가
 router.post("/timetable", async (req, res) => {
   try {
@@ -215,6 +216,61 @@ router.post("/timetable", async (req, res) => {
     ]);
 
     res.status(201).json({ message: "시간표 추가 완료" });
+
+    // ✅ LINE 알림 전송 로직 시작
+    try {
+      // 1. 과목 정보 조회 (레벨/class_group 등 확인)
+      const [subjectRow] = await db.promise().query(
+        "SELECT name, level, class_group FROM subjects WHERE id = ?",
+        [subject_id]
+      );
+      if (subjectRow.length === 0) return;
+
+      const subjectName = subjectRow[0].name;
+      const subjectLevel = level || subjectRow[0].level;
+      const subjectClassGroup = class_group || subjectRow[0].class_group;
+
+      // 2. LINE 대상자 조회
+      let userQuery = 'SELECT line_user_id FROM users WHERE line_user_id IS NOT NULL AND special_lecture = ?';
+      let userParams = [subjectLevel];
+
+      if (subjectClassGroup && subjectClassGroup !== '전체') {
+        userQuery += ' AND (class_group = ? OR class_group = "전체")';
+        userParams.push(subjectClassGroup);
+      }
+
+      const [users] = await db.promise().query(userQuery, userParams);
+      const userIds = users.map(u => u.line_user_id);
+      console.log("🎯 LINE 전송 대상자:", userIds);
+
+      // 3. 메시지 전송
+      if (userIds.length > 0) {
+        console.log("📦 LINE 전송 시작");
+
+        await sendTimetableAlert(userIds, {
+          type: 'special',
+          subject: subjectName,
+          professor,
+          day,
+          period: `${start_period}~${end_period}`,
+          level: subjectLevel,
+          class_group: subjectClassGroup,
+          link: "http://localhost:5173/timetable"
+        });
+      }
+
+      console.log("🧪 최종 사용자 쿼리:", userQuery);
+      console.log("🧪 파라미터:", userParams);
+      console.log("🧪 subject_id:", subject_id);
+      console.log("🧪 subjectName:", subjectName);
+      console.log("🧪 subjectLevel:", subjectLevel);
+      console.log("🧪 subjectClassGroup:", subjectClassGroup);
+
+      console.log("✅ LINE 메시지 전송 완료!");
+    } catch (err) {
+      console.error("❌ LINE 전송 오류:", err);
+    }
+
   } catch (error) {
     console.error("❌ 시간표 추가 오류:", error);
     res.status(500).json({ error: "서버 내부 오류 발생" });

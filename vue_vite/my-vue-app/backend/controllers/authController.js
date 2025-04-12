@@ -147,6 +147,7 @@ const googleCallback = async (req, res) => {
         const jwtToken = jwt.sign(
           {
             sub: user.google_id || "unknown",
+            id: user.id,
             email: user.email,
             name: user.name,
             role: user.role || "student",

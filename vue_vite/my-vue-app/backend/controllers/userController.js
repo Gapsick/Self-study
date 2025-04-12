@@ -51,11 +51,20 @@ const generateLineAuthCode = async (req, res) => {
     // 6자리 숫자 인증번호 생성
     const authCode = Math.floor(100000 + Math.random() * 900000).toString();
 
+    console.log("📥 인증번호 생성됨:", authCode, "for userId:", userId);
+
     // DB에 저장
-    await db.promise().query(
+    const [result] = await db.promise().query(
       `UPDATE users SET line_auth_code = ? WHERE id = ?`,
       [authCode, userId]
     );
+    
+    console.log("🧩 DB UPDATE 결과:", result);
+    
+    if (result.affectedRows === 0) {
+      console.warn("⚠️ 유저 ID를 못 찾았거나 업데이트 실패함 (id: " + userId + ")");
+    }
+    
 
     res.json({
       success: true,

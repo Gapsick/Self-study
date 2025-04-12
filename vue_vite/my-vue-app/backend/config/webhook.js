@@ -4,6 +4,7 @@ const db = require('../config/db');
 const { sendLineMessage } = require('./lineService');
 
 router.post('/', async (req, res) => {
+  console.log("📡 [LINE] Webhook 호출됨");  // ✅ 이거 꼭!
   const events = req.body.events;
 
   for (const event of events) {
