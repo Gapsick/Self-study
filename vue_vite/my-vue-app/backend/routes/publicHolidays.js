@@ -30,7 +30,7 @@ router.get('/public-holidays', async (req, res) => {
         date: String(items.locdate).replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3')
       });
     } else {
-      console.warn('[공휴일 없음 또는 응답 구조 이상]', response.data);
+      console.warn('[공휴일 없음]');
     }
 
     res.json(holidays);

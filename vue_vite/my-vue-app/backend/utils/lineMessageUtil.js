@@ -5,13 +5,13 @@ const { generateLectureMessage } = require('./lineTemplates/timetableTemplate');
 // 🔤 요일 변환 (영어 → 한글)
 const convertDayToKorean = (day) => {
   const map = {
-    Monday: '월요일',
-    Tuesday: '화요일',
-    Wednesday: '수요일',
-    Thursday: '목요일',
-    Friday: '금요일',
-    Saturday: '토요일',
-    Sunday: '일요일'
+    Monday: '월',
+    Tuesday: '화',
+    Wednesday: '수',
+    Thursday: '목',
+    Friday: '금',
+    Saturday: '토',
+    Sunday: '일'
   };
   return map[day] || day;
 };
@@ -61,6 +61,9 @@ async function sendTimetableAlert(userIds, {
   class_group,
   link
 }) {
+  const koreanDay = convertDayToKorean(day);
+  
+
   const textMessage = {
     type: 'text',
     text: generateLectureMessage({
