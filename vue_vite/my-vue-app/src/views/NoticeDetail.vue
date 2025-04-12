@@ -21,10 +21,25 @@
       <div class="meta-row file-row" v-if="notice.files && notice.files.length > 0">
         <span class="meta-label">첨부파일</span>
         <div style="display: flex; flex-direction: column; gap: 4px;">
-          <div v-for="file in notice.files" :key="file.id">
-            <a :href="`http://localhost:5000/${file.file_path}`" target="_blank" class="file-download">
-               {{ file.original_name }}
+          <div
+            v-for="file in notice.files"
+            :key="file.id"
+            class="file-line"
+          >
+            <span class="file-icon"></span>
+            <a
+              class="file-link"
+              :href="`http://localhost:5000/files/download/${getFileNameOnly(file.file_path)}`"
+            >
+              {{ file.original_name }}
             </a>
+            <button
+              v-if="isPreviewable(file.file_path)"
+              class="preview-btn"
+              @click="previewFile(file.file_path)"
+            >
+              🔍 미리보기
+            </button>
           </div>
         </div>
       </div>
@@ -74,6 +89,26 @@ export default {
       }
     });
 
+    const getFileName = (fullPath) => {
+      return fullPath.split("/").pop(); // ex: uploads/1234-파일명.pdf → 파일명만 추출
+    };
+
+    const isPreviewable = (filePath) => {
+      return /\.(jpg|jpeg|png|gif|pdf)$/i.test(filePath);
+    };
+
+    const previewFile = (filePath) => {
+      const filename = encodeURIComponent(filePath.split("/").pop());
+      window.open(`http://localhost:5000/files/preview/${filename}`, "_blank");
+    };
+
+    const getFileNameOnly = (path) => {
+      return path?.split("/").pop(); // "uploads/..." → "파일명"만 추출
+    };
+
+
+
+
     const getSubjectName = (subjectId) => {
       const subject = subjects.value.find(subj => subj.id == subjectId);
       return subject ? subject.name : "알 수 없음";
@@ -104,6 +139,10 @@ export default {
       goBack,
       editNotice,
       deleteNotice: deleteNoticeHandler,
+      isPreviewable,
+      previewFile,
+      getFileName,
+      getFileNameOnly
     };
   }
 };
@@ -232,4 +271,46 @@ export default {
 .back-btn:hover {
   background-color: #2563eb;
 }
+
+/* 미리보기 */
+.file-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  padding: 4px 0;
+  color: #1d4ed8;
+}
+
+.file-link {
+  text-decoration: none;
+  color: #1d4ed8;
+  font-weight: 500;
+  transition: color 0.2s;
+}
+
+.file-link:hover {
+  color: #1e3a8a;
+  text-decoration: underline;
+}
+
+.preview-btn {
+  background: none;
+  border: none;
+  color: #3b82f6;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0 6px;
+  border-radius: 4px;
+  transition: color 0.2s ease;
+}
+
+.preview-btn:hover {
+  color: #1e3a8a;
+  text-decoration: underline;
+}
+
+
+
+
 </style>
