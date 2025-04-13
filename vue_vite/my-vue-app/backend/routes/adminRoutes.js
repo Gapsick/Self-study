@@ -13,5 +13,10 @@ router.post("/subjects", adminController.createSubject);
 router.put("/subjects/:id", adminController.updateSubject);
 router.delete("/subjects/:id", adminController.deleteSubject);
 
+// 학생 특강 정보 목록 조회
+router.get("/special-lecture-users", adminController.getSpecialLectureUsers)
+
+// 학생 특강 정보 수정
+router.put("/special-lecture-users/:id", adminController.updateSpecialLectureUser)
 
 module.exports = router;
