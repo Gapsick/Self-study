@@ -84,7 +84,7 @@ const googleCallback = async (req, res) => {
 
     if (!isGyu) {
       const [approvedResults] = await db.promise().query(
-        "SELECT * FROM approved_emails WHERE email = ?",
+        "SELECT * FROM approved_emails WHERE email = ? AND status = 'active'",
         [email]
       );
       isApproved = approvedResults.length > 0;

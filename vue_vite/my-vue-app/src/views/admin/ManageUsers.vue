@@ -44,6 +44,44 @@
     <p v-else class="error-message">⚠️ 승인 대기 중인 사용자가 없습니다.</p>
     <p v-if="errorMessage" class="error-message">{{ errorMessage }}</p>
   </div>
+  <!-- ✅ 승인된 이메일 관리 -->
+  <div style="margin-top: 50px">
+    <h3>승인된 외부 이메일 목록</h3>
+
+    <!-- 이메일 추가 -->
+    <div class="email-add-form">
+      <input v-model="newEmail" placeholder="예: test@example.com" />
+      <button @click="addApprovedEmail">추가</button>
+    </div>
+
+
+    <!-- 이메일 테이블 -->
+    <table v-if="approvedEmails.length > 0">
+      <thead>
+        <tr>
+          <th>이메일</th>
+          <th>승인일</th>
+          <th>상태</th>
+          <th>관리</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr v-for="email in approvedEmails" :key="email.id">
+          <td>{{ email.email }}</td>
+          <td>{{ new Date(email.approved_at).toLocaleString() }}</td>
+          <td>{{ email.status }}</td>
+          <td>
+            <button @click="updateEmailStatus(email.id, email.status === 'active' ? 'blocked' : 'active')">
+              {{ email.status === 'active' ? '차단' : '복구' }}
+            </button>
+            <button @click="deleteApprovedEmail(email.id)" class="reject-btn">삭제</button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p v-else style="color: #999;">등록된 승인 이메일이 없습니다.</p>
+  </div>
 </template>
 
 <script setup>
@@ -53,6 +91,8 @@ import axios from "axios";
 // ✅ 반응형 상태 선언
 const pendingUsers = ref([]);
 const errorMessage = ref("");
+const approvedEmails = ref([]);
+const newEmail = ref("");
 
 // ✅ 승인 대기 사용자 목록 가져오기
 const fetchPendingUsers = async () => {
@@ -101,8 +141,58 @@ const rejectUser = async (user) => {
   }
 };
 
+// 승인 이메일 목록 가져오기
+const fetchApprovedEmails = async () => {
+  try {
+    const res = await axios.get("http://localhost:5000/api/admin/approved-emails");
+    approvedEmails.value = res.data;
+  } catch (err) {
+    console.error("❌ 승인 이메일 목록 로드 실패:", err);
+  }
+};
+
+// 승인 이메일 추가 함수
+const addApprovedEmail = async () => {
+  if (!newEmail.value.trim()) return alert("이메일을 입력하세요.");
+
+  try {
+    await axios.post("http://localhost:5000/api/admin/approved-emails", {
+      email: newEmail.value.trim(),
+    });
+    newEmail.value = "";
+    await fetchApprovedEmails();
+  } catch (err) {
+    alert(err.response?.data?.message || "❌ 추가 실패");
+  }
+};
+
+// 상태 변경 & 삭제 함수
+const updateEmailStatus = async (id, status) => {
+  try {
+    await axios.patch(`http://localhost:5000/api/admin/approved-emails/${id}/status`, {
+      status,
+    });
+    await fetchApprovedEmails();
+  } catch (err) {
+    alert("❌ 상태 변경 실패");
+  }
+};
+
+const deleteApprovedEmail = async (id) => {
+  if (!confirm("정말 삭제하시겠습니까?")) return;
+  try {
+    await axios.delete(`http://localhost:5000/api/admin/approved-emails/${id}`);
+    await fetchApprovedEmails();
+  } catch (err) {
+    alert("❌ 삭제 실패");
+  }
+};
+
 // ✅ 컴포넌트가 로드될 때 승인 대기 사용자 목록 불러오기
-onMounted(fetchPendingUsers);
+onMounted(() => {
+  fetchPendingUsers();
+  fetchApprovedEmails();
+});
 </script>
 
 <style scoped>
@@ -199,4 +289,27 @@ button:hover {
   font-weight: 500;
   font-size: 14px;
 }
+
+/* 이메일 입력창, 버튼 */
+.email-add-form {
+  display: flex;
+  gap: 8px;
+  margin: 10px 0 20px;
+}
+
+.email-add-form input {
+  flex: 1;
+  padding: 8px 10px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.email-add-form button {
+  padding: 8px 16px;
+  font-size: 13px;
+}
+
+
+
 </style>

@@ -192,6 +192,85 @@ const updateSpecialLectureUser = async (req, res) => {
   }
 }
 
+// 승인된 이메일 목록 조회
+const getApprovedEmails = async (req, res) => {
+  try {
+    const [rows] = await db.promise().query(
+      "SELECT * FROM approved_emails ORDER BY approved_at DESC"
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error("승인된 이메일 조회 실패:", err);
+    res.status(500).json({ message: "❌ 이메일 목록 조회 실패", error: err });
+  }
+};
+
+// 이메일 추가 (승인)
+const addApprovedEmail = async (req, res) => {
+  const { email } = req.body;
+
+  if (!email) {
+    return res.status(400).json({ message: "❌ 이메일을 입력해주세요." });
+  }
+
+  try {
+    await db.promise().query(
+      "INSERT INTO approved_emails (email) VALUES (?)",
+      [email]
+    );
+    res.json({ success: true, message: "✅ 승인 이메일 추가 완료" });
+  } catch (err) {
+    console.error("이메일 추가 실패:", err);
+    if (err.code === "ER_DUP_ENTRY") {
+      return res.status(400).json({ message: "❌ 이미 등록된 이메일입니다." });
+    }
+    res.status(500).json({ message: "❌ 이메일 추가 실패", error: err });
+  }
+};
+
+// 이메일 삭제
+const deleteApprovedEmail = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const [result] = await db.promise().query(
+      "DELETE FROM approved_emails WHERE id = ?",
+      [id]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "❌ 해당 이메일을 찾을 수 없습니다." });
+    }
+
+    res.json({ success: true, message: "✅ 이메일 삭제 완료" });
+  } catch (err) {
+    console.error("이메일 삭제 실패:", err);
+    res.status(500).json({ message: "❌ 삭제 중 오류 발생", error: err });
+  }
+};
+
+// 상태 변경 (차단/복구)
+const updateApprovedEmailStatus = async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+
+  if (!["active", "blocked"].includes(status)) {
+    return res.status(400).json({ message: "❌ 잘못된 상태 값입니다." });
+  }
+
+  try {
+    await db.promise().query(
+      "UPDATE approved_emails SET status = ? WHERE id = ?",
+      [status, id]
+    );
+    res.json({ success: true, message: `✅ 상태가 ${status}로 변경되었습니다.` });
+  } catch (err) {
+    console.error("상태 변경 실패:", err);
+    res.status(500).json({ message: "❌ 상태 변경 실패", error: err });
+  }
+};
+
+
 module.exports = { 
   
   // 사용자 승인 관련
@@ -209,5 +288,10 @@ module.exports = {
   getSpecialLectureUsers,
   updateSpecialLectureUser,
 
+  // email 승인
+  getApprovedEmails,
+  addApprovedEmail,
+  deleteApprovedEmail,
+  updateApprovedEmailStatus,
 
  };
