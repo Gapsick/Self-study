@@ -15,15 +15,15 @@
       </transition>
     </div>
 
-    <!-- ✅ 섹션: 학생 특강 설정 -->
+    <!-- ✅ 학생 정보 관리 섹션 -->
     <div class="section">
-      <div class="section-header" @click="toggle('specialLecture')">
-        <h3>🛠️ 학생 특강 설정</h3>
-        <span>{{ open.specialLecture ? '▲' : '▼' }}</span>
+      <div class="section-header" @click="toggle('students')">
+        <h3>📋 학생 정보 관리</h3>
+        <span>{{ open.students ? '▲' : '▼' }}</span>
       </div>
       <transition name="slide">
-        <div v-if="open.specialLecture" class="section-box">
-          <ManageUsersetting />
+        <div v-if="open.students" class="section-box">
+          <ManageStudents />
         </div>
       </transition>
     </div>
@@ -64,7 +64,7 @@ const open = reactive({
   users: false,
   subjects: false,
   timetable: false,
-  specialLecture: false,
+  students: false,
 })
 
 function toggle(section) {
@@ -75,7 +75,7 @@ function toggle(section) {
 import ManageUsers from './ManageUsers.vue'
 import ManageSubjects from './ManageSubjects.vue'
 import ManageTimetable from './ManageTimetable.vue'
-import ManageUsersetting from './ManageUsersetting.vue'
+import ManageStudents from './ManageStudents.vue'
 </script>
 
 <style scoped>

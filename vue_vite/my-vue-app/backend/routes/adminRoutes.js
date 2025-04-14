@@ -13,11 +13,10 @@ router.post("/subjects", adminController.createSubject);
 router.put("/subjects/:id", adminController.updateSubject);
 router.delete("/subjects/:id", adminController.deleteSubject);
 
-// 학생 특강 정보 목록 조회
-router.get("/special-lecture-users", adminController.getSpecialLectureUsers)
+// 학생 정보 관리
+router.get("/students", adminController.getAllStudents);
+router.put("/students/:id", adminController.updateStudent);
 
-// 학생 특강 정보 수정
-router.put("/special-lecture-users/:id", adminController.updateSpecialLectureUser)
 
 // 승인된 이메일 관리
 router.get("/approved-emails", adminController.getApprovedEmails);             // 전체 목록 조회

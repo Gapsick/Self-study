@@ -58,6 +58,52 @@ const rejectUser = async (req, res) => {
   }
 };
 
+// 전체 학생 목록 조회
+const getAllStudents = async (req, res) => {
+  try {
+    const [rows] = await db.promise().query(`
+      SELECT 
+        id,
+        name,
+        student_id,
+        grade,
+        phone,
+        special_lecture,
+        class_group,
+        IFNULL(is_foreign, 0) AS is_foreign
+      FROM users
+      WHERE role = 'student'
+    `);
+    res.json(rows);
+  } catch (err) {
+    console.error("학생 목록 조회 실패:", err);
+    res.status(500).json({ message: "❌ 학생 목록 조회 실패", error: err });
+  }
+};
+
+// 개별 학생 정보 수정
+const updateStudent = async (req, res) => {
+  const { id } = req.params;
+  const { grade, phone, special_lecture, class_group } = req.body;
+
+  try {
+    await db.promise().query(
+      `
+      UPDATE users 
+      SET grade = ?, phone = ?, special_lecture = ?, class_group = ? 
+      WHERE id = ?
+      `,
+      [grade, phone, special_lecture || null, class_group || null, id]
+    );
+    res.json({ success: true, message: "✅ 학생 정보가 수정되었습니다." });
+  } catch (err) {
+    console.error("학생 정보 수정 실패:", err);
+    res.status(500).json({ message: "❌ 학생 정보 수정 실패", error: err });
+  }
+};
+
+
+
 // ✅ 과목 목록 조회
 const getSubjects = async (req, res) => {
   try {
@@ -130,7 +176,6 @@ const updateSubject = async (req, res) => {
 };
 
 
-
 // ✅ 과목 삭제
 const deleteSubject = async (req, res) => {
   const { id } = req.params;
@@ -152,45 +197,6 @@ const deleteSubject = async (req, res) => {
   }
 };
 
-
-// 학생 특광 관리
-const getSpecialLectureUsers = async (req, res) => {
-  try {
-    const [rows] = await db.promise().query(`
-      SELECT 
-        id, 
-        name, 
-        grade, 
-        is_foreign, 
-        special_lecture AS level, 
-        class_group 
-      FROM users 
-      WHERE role = 'student'
-    `)
-    res.json(rows)
-  } catch (err) {
-    console.error("특강 사용자 목록 조회 실패:", err)
-    res.status(500).json({ message: "서버 오류" })
-  }
-}
-
-
-// 🔹 학생 특강 정보 수정
-const updateSpecialLectureUser = async (req, res) => {
-  const { id } = req.params
-  const { level, class_group } = req.body
-
-  try {
-    await db.promise().query(
-      "UPDATE users SET special_lecture = ?, class_group = ? WHERE id = ?",
-      [level, class_group, id]
-    )
-    res.json({ message: "수정 완료" })
-  } catch (err) {
-    console.error("특강 정보 수정 실패:", err)
-    res.status(500).json({ message: "서버 오류" })
-  }
-}
 
 // 승인된 이메일 목록 조회
 const getApprovedEmails = async (req, res) => {
@@ -278,15 +284,15 @@ module.exports = {
   approveUser, 
   rejectUser,
 
+  // 학생 관리
+  getAllStudents,
+  updateStudent,
+
   // 과목 관련
   getSubjects,
   createSubject,
   updateSubject,
   deleteSubject,
-
-  // 특강 정보
-  getSpecialLectureUsers,
-  updateSpecialLectureUser,
 
   // email 승인
   getApprovedEmails,
