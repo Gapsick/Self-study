@@ -9,6 +9,7 @@
             <option value="정규">정규</option>
             <option value="특강">특강</option>
             <option value="한국어">한국어</option>
+            <option value="보강">보강</option>
           </select>
         </label>
 
@@ -143,6 +144,17 @@ const filteredSubjects = computed(() => {
     return subjects.value.filter(s => s.category === '특강')
   } else if (form.category === '한국어') {
     return subjects.value.filter(s => s.academic_year === null && s.category === '한국어') // ✅ 이 줄 중요!
+  } else if (form.category === '보강') {
+    // ✅ 1. 현재 학년의 정규 + 모든 한국어 (외국인 수업)만
+    const 정규 = subjects.value.filter(
+      s => s.category === '정규' && s.academic_year === props.grade
+    )
+    const 한국어 = subjects.value.filter(
+      s => s.category === '한국어' && s.academic_year === null
+    )
+
+    // ✅ 2. 정규 먼저, 한국어 나중에 정렬
+    return [...정규, ...한국어]
   } else {
     return []
   }

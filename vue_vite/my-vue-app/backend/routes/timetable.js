@@ -259,13 +259,6 @@ router.post("/timetable", async (req, res) => {
         });
       }
 
-      console.log("🧪 최종 사용자 쿼리:", userQuery);
-      console.log("🧪 파라미터:", userParams);
-      console.log("🧪 subject_id:", subject_id);
-      console.log("🧪 subjectName:", subjectName);
-      console.log("🧪 subjectLevel:", subjectLevel);
-      console.log("🧪 subjectClassGroup:", subjectClassGroup);
-
       console.log("✅ LINE 메시지 전송 완료!");
     } catch (err) {
       console.error("❌ LINE 전송 오류:", err);

@@ -78,7 +78,14 @@
             >
               <template v-if="cls.category === '정규'">
                 <span v-if="cls.is_absent" class="badge badge-cancel">🛑 휴강</span>
+                <span v-else-if="cls.status === '보강'" class="badge badge-makeup">🔁 보강</span>
                 <span v-else class="badge badge-normal">정규</span>
+                <strong>{{ cls.subject_name }}</strong><br />
+                <small>{{ cls.professor }}</small>
+              </template>
+
+              <template v-else-if="cls.category === '보강'">
+                <span class="badge badge-makeup">🔁 보강</span>
                 <strong>{{ cls.subject_name }}</strong><br />
                 <small>{{ cls.professor }}</small>
               </template>
@@ -95,6 +102,7 @@
 
               <template v-else-if="cls.category === '특강'">
                 <span v-if="cls.is_absent" class="badge badge-cancel">🛑 휴강</span>
+                <span v-else-if="cls.status === '보강'" class="badge badge-makeup">🔁 보강</span>
                 <span v-else class="badge badge-normal">특강</span>
                 <strong>{{ cls.subject_name }}</strong><br />
                 <small>{{ cls.professor }}</small><br />
@@ -104,6 +112,7 @@
 
               <template v-else-if="cls.category === '한국어'">
                 <span v-if="cls.is_absent" class="badge badge-cancel">🛑 휴강</span>
+                <span v-else-if="cls.status === '보강'" class="badge badge-makeup">🔁 보강</span>
                 <span v-else class="badge badge-normal">한국어</span>
                 <strong>{{ cls.subject_name }}</strong><br />
                 <small>{{ cls.professor }}</small><br />
@@ -286,15 +295,20 @@ function getClassesForMergedCell(day, period) {
   const startOnly = active.filter(cls => cls.start_period === period)
 
   const regulars = startOnly.filter((c) => {
+  // category가 '정규'가 아니면 제외
   if (c.category !== '정규') return false
+
+  // academic_year가 없으면 제외 (== null)
   if (c.academic_year == null) return false
 
-  // 디버깅 로그
-  const isMatch = Number(c.academic_year) === Number(grade.value)
-
+  // 관리자나 교수는 모든 학년 수업을 보이게
   if (user.role === 'admin' || user.role === 'professor') return true
-  return isMatch
-  })
+
+  // 학생이면 본인 학년만
+  return Number(c.academic_year) === Number(grade.value)
+})
+
+const makeups = startOnly.filter((c) => c.category === '보강')
 
   const specials = startOnly.filter(c => c.category === '특강')
   let specialsToPush = []
@@ -331,7 +345,7 @@ const koreans = startOnly.filter(c => {
   return shouldShow
   })
 
-  return [...regulars, ...specialsToPush, ...koreans]
+  return [...regulars, ...makeups, ...specialsToPush, ...koreans]
 }
 
 function onDateChange() {
@@ -830,6 +844,11 @@ td {
 }
 .badge-overlap:hover {
   background-color: #fde68a;
+}
+
+.badge-makeup {
+  background-color: #c7d2fe;
+  color: #3730a3;
 }
 
 
