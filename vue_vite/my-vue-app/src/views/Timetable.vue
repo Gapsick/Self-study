@@ -78,7 +78,6 @@
             >
               <template v-if="cls.category === '정규'">
                 <span v-if="cls.is_absent" class="badge badge-cancel">🛑 휴강</span>
-                <span v-else-if="cls.status === '보강'" class="badge badge-makeup">🔁 보강</span>
                 <span v-else class="badge badge-normal">정규</span>
                 <strong>{{ cls.subject_name }}</strong><br />
                 <small>{{ cls.professor }}</small>
