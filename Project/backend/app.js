@@ -1,0 +1,45 @@
+// app.js
+require('dotenv').config()
+const express = require('express');
+const app = express()
+const port = 3000
+app.use(express.json());
+
+// 라우터
+
+// 구글 oauth
+const authRouter = require('./routes/auth.router');
+app.use('/auth', authRouter);
+
+// Register
+const registerRouter = require('./routes/register.router')
+app.use('/register', registerRouter)
+
+
+// ID Token값 분석
+const idToken = require('./routes/idtoken.router');
+app.use('/idtoken', idToken)
+
+// DB 정보
+const mysql = require('mysql')
+const connection = mysql.createConnection({
+  host: process.env.HOST,
+  user: process.env.USER,
+  password: process.env.PASSWORD,
+  database: process.env.DATABASE
+})
+
+// DB 연결
+connection.connect(function(err) {
+  if (err) {
+    console.error('error connecting: ' + err.stack);
+    return;
+  }
+  console.log('connected as id ' + connection.threadId);
+});
+
+app.listen(port, () => {
+    console.log('server on');
+})
+
+
