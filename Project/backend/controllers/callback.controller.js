@@ -57,10 +57,13 @@ async function callback(req, res) {
 
       // 결과가 없을 경우
       if (results.length === 0) {
-        res.send("Go Register");
         connection.end();
+        return res.send("Go Register");;
 
       } else {
+        // 위의 커리 email값 저장
+        const userId = results[0].id;
+
         // 결과가 있을 경우
         // jwt token 발행
         const jwtToken = jwt.sign(user, process.env.JWT_SECRET, { expiresIn: '2h'});
@@ -69,16 +72,26 @@ async function callback(req, res) {
         const refreshToken = jwt.sign(user,
           process.env.JWT_REFRESH_SECRET,
           { expiresIn: '3d'})
-          refreshTokens.push(refreshToken);
+
+        // refreshToken 저장
+        query = "INSERT INTO oauth (id, google_id, refresh_token) values (?, ?, ?) ON DUPLICATE KEY UPDATE refresh_token = ?"
+        connection.query(query, [userId, "Hello", refreshToken, refreshToken], (err, results, fields) => {
+          if(err) throw err;
+
+          // 결과가 없을 경우
+          if (results.length === 0) {
+            return res.send("Error - refreshToken 저장 안됨");
+          }
+        })
+
+        // DB 연결 종료
+        connection.end();
         
         // refreshToken을 쿠키에 넣기
         res.cookie('jwt', refreshToken, {
           httpOnly: true,
           maxAge: 24 * 60 * 60 * 1000
         });
-
-        // DB 연결 종료
-        connection.end();
 
         // 반환 값 : jwtToken + res msg
         res.json({
