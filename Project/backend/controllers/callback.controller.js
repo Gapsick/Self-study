@@ -66,7 +66,7 @@ async function callback(req, res) {
 
         // 결과가 있을 경우
         // jwt token 발행
-        const jwtToken = jwt.sign(user, process.env.JWT_SECRET, { expiresIn: '2h'});
+        const jwtToken = jwt.sign(user, process.env.JWT_SECRET, { expiresIn: '20s'});
 
         // jwt를 이용해서 refreshToken 생성
         const refreshToken = jwt.sign(user,
@@ -87,7 +87,7 @@ async function callback(req, res) {
         // DB 연결 종료
         connection.end();
         
-        // refreshToken을 쿠키에 넣기
+        // refreshToken을 쿠키에 넣기, key: jwt, value :refreshToken
         res.cookie('jwt', refreshToken, {
           httpOnly: true,
           maxAge: 24 * 60 * 60 * 1000
