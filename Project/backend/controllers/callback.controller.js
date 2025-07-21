@@ -1,9 +1,11 @@
 // callback.controller.js
+require('dotenv').config();
 const express = require('express');
 const app = express();
 const mysql = require('mysql');
 const axios = require('axios');
 const { google } = require('googleapis');
+const jwt = require('jsonwebtoken');
 app.use(express.json());
 
 
@@ -30,6 +32,7 @@ async function callback(req, res) {
     const userInfo = await oauth2.userinfo.get();
     console.log(userInfo.data);
 
+    // DB 연결
     const connection = mysql.createConnection({
       host: process.env.HOST,
       user: process.env.USER,
@@ -37,24 +40,34 @@ async function callback(req, res) {
       database: process.env.DATABASE
     })
 
+    // jwt 정보
+    const user = {
+      name: userInfo.data.name
+    };
+
+    // refreshTokens 배열
+    let refreshTokens = [];
+
+
     // DB에 사용자 email이 있는지 확인 (userInfo.data.email값) + Prepare Statement 사용 (보안)
     connection.query('SELECT * FROM users WHERE email = ?', [userInfo.data.email], (err, results, fields) => {
       
       // 에러 날 경우
       if(err) throw err;
 
-
       // 결과가 없을 경우
       if (results.length === 0) {
         res.send("Go Register");
+        connection.end();
+
       } else {
         // 결과가 있을 경우
         // jwt token 발행
-        const jwtToken = jwt.sign(user, secretText, { expiresIn: '2h'});
+        const jwtToken = jwt.sign(user, process.env.JWT_SECRET, { expiresIn: '2h'});
 
         // jwt를 이용해서 refreshToken 생성
         const refreshToken = jwt.sign(user,
-          refreshSecretText,
+          process.env.JWT_REFRESH_SECRET,
           { expiresIn: '3d'})
           refreshTokens.push(refreshToken);
         
@@ -64,14 +77,15 @@ async function callback(req, res) {
           maxAge: 24 * 60 * 60 * 1000
         });
 
+        // DB 연결 종료
+        connection.end();
+
+        // 반환 값 : jwtToken + res msg
         res.json({
-          jwtToken: accessToken,
+          jwtToken: jwtToken,
           res : "Go Main"
         });
       }
-
-      // DB 연결 종료
-      connection.end();
 
     })
 }

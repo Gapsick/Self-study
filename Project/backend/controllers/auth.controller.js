@@ -2,7 +2,7 @@
 const {google} = require('googleapis');
 
 function authGet(req, res) {
-    const CLIENT_ID = process.env.PORT;
+    const CLIENT_ID = process.env.CLIENT_ID;
     const REDIRECT_URI = process.env.REDIRECT_URI;
     const CLIENT_SECRET = process.env.CLIENT_SECRET;
 
