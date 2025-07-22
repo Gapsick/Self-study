@@ -30,7 +30,6 @@ async function callback(req, res) {
     // 사용자 정보 요청
     const oauth2 = google.oauth2({ version: 'v2', auth: oauth2Client });
     const userInfo = await oauth2.userinfo.get();
-    console.log(userInfo.data);
 
     // DB 연결
     const connection = mysql.createConnection({

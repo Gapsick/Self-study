@@ -6,7 +6,6 @@ const port = 3000
 app.use(express.json());
 
 // 라우터
-
 // 구글 oauth
 const authRouter = require('./routes/auth.router');
 app.use('/auth', authRouter);
@@ -19,6 +18,16 @@ app.use('/register', registerRouter)
 // ID Token값 분석
 const idToken = require('./routes/idtoken.router');
 app.use('/idtoken', idToken)
+
+
+
+
+
+
+
+// Error Handling 연결
+const errorHandler =  require ('./middlewares/errorHandler.js')
+app.use(errorHandler);
 
 // DB 정보
 const mysql = require('mysql')
@@ -38,8 +47,8 @@ connection.connect(function(err) {
   console.log('connected as id ' + connection.threadId);
 });
 
+
+// 포트 열기
 app.listen(port, () => {
     console.log('server on');
 })
-
-

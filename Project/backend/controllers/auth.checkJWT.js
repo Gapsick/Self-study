@@ -65,7 +65,7 @@ function checkRefreshToken(req, res) {
     connection.query(query, [refreshToken], (err, results, field) => {
 
         // 에러가 날 경우
-        if (err) throw err;
+        if (err) throw next(err);
 
         // 결과 값이 없을 경우
         if (results.length === 0) {
