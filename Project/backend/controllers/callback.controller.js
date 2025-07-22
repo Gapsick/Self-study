@@ -53,12 +53,14 @@ async function callback(req, res, next) {
     // 결과가 없을 경우
     if (results.length === 0) {
       connection.end();
-      return res.status(200).json({
+      const data = {
         success: true,
         message: "회원가입필요",
         data: null,
         code: 200
-      });
+      }
+
+      return res.send(sendVue(data));
 
     } else {
       // 위의 커리 email값 저장
@@ -81,34 +83,54 @@ async function callback(req, res, next) {
 
         // 결과가 없을 경우
         if (results.length === 0) {
-          return res.status(400).json({
+          const data = {
             success: false,
             message: "refreshToken 저장안됨",
             data: null,
             code: 400
-          })
+          }
+          return res.send(sendVue(data));
+        } else {
+          const data = {
+            success: true,
+            message: "승인됨",
+            data: jwtToken,
+            code: 201
+          }
+
+          // DB 연결 종료
+          connection.end();
+
+          // refreshToken을 쿠키에 넣기, key: jwt, value :refreshToken
+          res.cookie('jwt', refreshToken, {
+            httpOnly: true,
+            maxAge: 24 * 60 * 60 * 1000
+          });
+
+          return res.send(sendVue(data));
         }
-
-        // DB 연결 종료
-        connection.end();
-
-        // refreshToken을 쿠키에 넣기, key: jwt, value :refreshToken
-        res.cookie('jwt', refreshToken, {
-          httpOnly: true,
-          maxAge: 24 * 60 * 60 * 1000
-        });
-
-        // 반환 값 : jwtToken + res msg
-        res.status(201).json({
-          success: true,
-          message: "승인됨",
-          data: jwtToken,
-          code: 201
-        });
       })
     }
   })
 }
+
+// vue 반환 함수
+function sendVue(data) {
+  return `
+          <html>
+            <body>
+              <script>
+              const data = ${JSON.stringify(data)}
+
+                // 메시지 전송
+                window.opener.postMessage(data, 'http://localhost:5173');
+                window.close();
+              </script>
+            </body>
+          </html>
+        `
+}
+
 
 module.exports = {
   callback
