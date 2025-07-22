@@ -5,8 +5,9 @@ function errorHandler (err, req, res, next) {
 
     res.status(err.status || 500).json({
         success: false,
-        status: "error",
-        message: err.message || "Critical Error"
+        message: err.message || "Server error",
+        data: null,
+        code: err.status || 500
     })
 }
 
