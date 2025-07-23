@@ -1,25 +1,14 @@
 // auth.checkJWT.js
 require('dotenv').config();
-const express = require('express');
-const app = express();
+var mysql = require("mysql");
 const jwt = require('jsonwebtoken');
-const cors = require('cors');
-const cookieParser = require('cookie-parser');
-
-app.use(express.json());
-app.use(cookieParser());
-
-// cors -> 자신이 속하지 않은 다른 도메인 리소스 요청 ex)cookie
-app.use(cors({
-    origin: 'http://localhost:3000',
-    credentials: true
-}));
 
 // 첫 로그인 -> JWT 확인
 function checkJWT(req, res, next) {
     // JWT 있는지 확인
-    if (req.headers.authorization) {
-        const token = req.headers.authorization.split(' ')[1];
+    const checkToken = req.headers.authorization;
+    if (checkToken) {
+        const token = checkToken.split(' ')[1];
         // token이 유효한지 확인
         jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
 
@@ -97,12 +86,21 @@ function checkRefreshToken(req, res, next) {
             // DB 종료
             connection.end();
 
-            // Refresh Token이랑 맞는 유저정보가 있을 경우
+            // Refresh Token이랑 맞는 유저정보가 있을 경우      * SELECT의 반환값은 RowDataPacket이고 data는 안에 객채로 있음*
+            const user = results[0];
+
+            // payload 설정 -> 민감한 정보는 제외
+            const payload = {
+                id: user.id,
+                email: user.email,
+                name: user.name
+            }
+
             // jwt token 만들기
-            const jwtToken = jwt.sign(results[0], process.env.JWT_SECRET, { expiresIn: '2h' });
+            const jwtToken = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '2h' });
 
             // 반환
-            res.status(200).json({
+            return res.status(200).json({
                 success: true,
                 message: "성공, jwt token반환",
                 data: jwtToken,

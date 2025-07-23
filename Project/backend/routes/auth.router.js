@@ -1,10 +1,16 @@
 const express = require('express');
+const app = express();
+const cors = require('cors');
+app.use(cors({
+    origin: 'http://localhost:5173',
+    credentials: true
+}));
+app.use(express.json());
 
 const authRouter = express.Router();
 const authcheckJWT = require('../controllers/auth.checkJWT');
 const authController = require('../controllers/auth.controller');
 const authCallback = require('../controllers/callback.controller');
-
 
 // login창 들어왔을때 token값 확인
 authRouter.get('/', authcheckJWT.checkJWT);

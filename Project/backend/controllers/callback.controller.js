@@ -68,7 +68,7 @@ async function callback(req, res, next) {
 
       // 결과가 있을 경우
       // jwt token 발행
-      const jwtToken = jwt.sign(user, process.env.JWT_SECRET, { expiresIn: '20s' });
+      const jwtToken = jwt.sign(user, process.env.JWT_SECRET, { expiresIn: '1h' });
 
       // jwt를 이용해서 refreshToken 생성
       const refreshToken = jwt.sign(user,
