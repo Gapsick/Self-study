@@ -11,7 +11,7 @@ const options = {
     },
     servers: [{ url: "http://localhost:3000" }],
   },
-  apis: ["./routes/*.js"], // 주석 스캔할 위치
+  apis: ["./docs/*.js"], // 주석 스캔할 위치
 };
 
 const specs = swaggerJsDoc(options);
