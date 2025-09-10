@@ -1,8 +1,19 @@
 const express = require("express");
 const { swaggerUi, specs } = require("./docs/swagger");
+const pool = require('./src/db/connection');
 
 const app = express();
 app.use(express.json());
+
+// DB 연결
+pool.getConnection((err, connection) => {
+  if (err) {
+    console.error('DB 연결 안됨:', err.message);
+    return;
+  }
+  console.log('DB 연결 성공');
+  connection.release();
+});
 
 // Swagger 연결
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(specs));
