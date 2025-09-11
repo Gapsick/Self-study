@@ -18,6 +18,11 @@ pool.getConnection((err, connection) => {
 // Swagger 연결
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(specs));
 
+// 라우트
+const routes = require("./src/routes");
+app.use("/api/v1", routes);
+
+
 // 테스트 라우트
 app.get("/", (req, res) => {
   res.send("🚗 Parking Control System Backend running...");
