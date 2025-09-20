@@ -1,0 +1,1 @@
+SELECT * FROM v_admin_pending_users;

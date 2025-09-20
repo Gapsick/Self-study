@@ -1,0 +1,34 @@
+version: "3.8"
+
+services:
+  api:
+    build: .
+    container_name: gsc-api
+    restart: always
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    depends_on:
+      - db
+    volumes:
+      - .:/usr/src/app
+      - /usr/src/app/node_modules
+
+  db:
+    image: mysql:8.0
+    container_name: gsc-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: gsc_portal
+      MYSQL_USER: gsc
+      MYSQL_PASSWORD: gscpass
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./sql:/docker-entrypoint-initdb.d
+      - db_data:/var/lib/mysql
+
+volumes:
+  db_data:

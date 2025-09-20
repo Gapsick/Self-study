@@ -1,0 +1,1 @@
+SELECT * FROM allowed_email;
