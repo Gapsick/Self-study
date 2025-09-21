@@ -1,5 +1,5 @@
-const swaggerUi = require("swagger-ui-express");
-const swaggerJsDoc = require("swagger-jsdoc");
+import swaggerUi from "swagger-ui-express";
+import swaggerJsdoc from "swagger-jsdoc";
 
 const options = {
   definition: {
@@ -14,6 +14,6 @@ const options = {
   apis: ["./docs/*.js"], // 주석 스캔할 위치
 };
 
-const specs = swaggerJsDoc(options);
+const specs = swaggerJsdoc(options);
 
-module.exports = { swaggerUi, specs };
+export { swaggerUi, specs };

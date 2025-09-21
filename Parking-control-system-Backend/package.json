@@ -1,6 +1,7 @@
 {
   "name": "parking-control-system-backend",
   "version": "1.0.0",
+  "type": "module",
   "main": "index.js",
   "scripts": {
     "dev": "nodemon index.js",
@@ -18,6 +19,7 @@
     "express": "^5.1.0",
     "install": "^0.13.0",
     "mysql2": "^3.14.5",
+    "socket.io": "^4.8.1",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1"
   },

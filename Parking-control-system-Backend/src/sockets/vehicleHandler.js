@@ -1,4 +1,4 @@
-module.exports = (io, pool) => {
+export default (io, pool) => {
     io.on("connection", (socket) => {
         console.log("클라이언트 연결됨:", socket.id);
 
@@ -78,7 +78,7 @@ module.exports = (io, pool) => {
             );
         }
 
-        io.emit(data); // 프론트 전달
+        io.emit("vehicle_data", data); // 이벤트 이름 지정해서 프론트로 전달
         });
     });
-    };
+};

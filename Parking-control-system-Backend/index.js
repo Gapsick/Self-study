@@ -1,34 +1,50 @@
-const express = require("express");
-const { swaggerUi, specs } = require("./docs/swagger");
-const pool = require('./src/db/connection');
+import express from "express";
+import { swaggerUi, specs } from "./docs/swagger.js";
+import pool from "./src/db/connection.js";
+import routes from "./src/routes/index.js";
+
+import httpPkg from "http";
+import { Server } from "socket.io";
+
+import vehicleHandler from "./src/sockets/vehicleHandler.js";
 
 const app = express();
 app.use(express.json());
 
-// DB 연결
-pool.getConnection((err, connection) => {
-  if (err) {
-    console.error('DB 연결 안됨:', err.message);
-    return;
-  }
-  console.log('DB 연결 성공');
-  connection.release();
-});
+const http = httpPkg.createServer(app);
+const io = new Server(http, { cors: { origin: "*" } });
 
 // Swagger 연결
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(specs));
 
-// 라우트
-const routes = require("./src/routes");
-app.use("/api/v1", routes);
+// REST API 라우트
+app.use("/", routes);
+
+const testDBConnection = async (retries = 5, delay = 3000) => {
+  for (let i = 0; i < retries; i++) {
+    try {
+      const connection = await pool.getConnection();
+      console.log("DB 연결 성공");
+      connection.release();
+      return;
+    } catch (err) {
+      console.error(`DB 연결 실패 (${i + 1}/${retries}):`, err.message);
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+  console.error("DB 연결 최종 실패: DB가 준비되지 않았습니다.");
+};
+
+testDBConnection();
 
 
-// 테스트 라우트
-app.get("/", (req, res) => {
-  res.send("🚗 Parking Control System Backend running...");
-});
 
-app.listen(3000, () => {
-  console.log("✅ Server running at http://localhost:3000");
-  console.log("✅ Swagger docs at http://localhost:3000/api-docs");
+// Socket.IO 핸들러
+vehicleHandler(io, pool);
+
+// 서버 실행
+const PORT = process.env.PORT || 3000;
+http.listen(PORT, () => {
+  console.log(`Server running at http://localhost:${PORT}`);
+  console.log(`Swagger docs at http://localhost:${PORT}/api-docs`);
 });

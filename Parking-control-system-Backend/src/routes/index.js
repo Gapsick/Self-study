@@ -1,7 +1,8 @@
-const express = require('express');
+import express from "express";
+import adminRoutes from "./admin.routes.js";
+
 const router = express.Router();
 
-router.use("/admin", require("./admin.routes"))
-router.use("/occupancy", require("./occupancy.routes"))
+router.use("/admin", adminRoutes);
 
-module.exports = router;
+export default router;
