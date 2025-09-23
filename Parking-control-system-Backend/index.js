@@ -20,6 +20,10 @@ app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(specs));
 // REST API 라우트
 app.use("/", routes);
 
+// 사진 미리보기
+app.use("/uploads", express.static("uploads"));
+
+// DB 연결 테스트
 const testDBConnection = async (retries = 5, delay = 3000) => {
   for (let i = 0; i < retries; i++) {
     try {
