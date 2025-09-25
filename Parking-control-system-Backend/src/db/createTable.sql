@@ -6,7 +6,7 @@ CREATE TABLE parking_event (
     duration INT,
     fee INT NULL,                                  -- 요금
     entry_photo_url VARCHAR(255) NULL,             -- 사진
-    status ENUM('parking','completed', 'exiting') NOT NULL DEFAULT 'parking', -- 현재 상태
+    status ENUM('moving','parking', 'exiting') NOT NULL DEFAULT 'moving', -- 현재 상태
     INDEX idx_plate_date (plate_number, entry_time) -- 차량번호 + 날짜 검색 인덱스
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
