@@ -48,7 +48,7 @@ vehicleHandler(io, pool);
 
 // 서버 실행
 const PORT = process.env.PORT || 3000;
-http.listen(PORT, () => {
+http.listen(PORT,'0.0.0.0', () => {
   console.log(`Server running at http://localhost:${PORT}`);
   console.log(`Swagger docs at http://localhost:${PORT}/api-docs`);
 });
