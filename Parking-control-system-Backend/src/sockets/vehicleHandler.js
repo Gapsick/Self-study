@@ -8,7 +8,9 @@ export default (io, pool) => {
         socket.on("vehicle_data", async (data) => {
             console.log("서버 vehicle_data 수신:", data);
 
-            for (const carInfo of Object.values(data)) {
+            const { time, parking, moving } = data;
+
+            for (const [carId, carInfo] of Object.entries(moving)) {
                 const { car_number, status, entry_time, position, photo } = carInfo;
 
                 try {
@@ -65,10 +67,10 @@ export default (io, pool) => {
                             `UPDATE parking_event SET status='parking' WHERE id=?`,
                             [eventId]
                         );
-                    } else if (status === "exiting") {
+                    } else if (status === "exit") {
                         await pool.query(
                             `UPDATE parking_event 
-                            SET status='exiting', exit_time=NOW() 
+                            SET status='exit', exit_time=NOW() 
                             WHERE id=?`,
                             [eventId]
                         );
@@ -79,7 +81,7 @@ export default (io, pool) => {
                         await pool.query(
                             `INSERT INTO parking_route (event_id, type, node_list)
                             VALUES (?, ?, ?)`,
-                            [eventId, status === "exiting" ? "exit" : "entry", JSON.stringify(position)]
+                            [eventId, status === "exit" ? "exit" : "entry", JSON.stringify(position)]
                         );
 
                         console.log(`경로 저장 완료: event ${eventId}, pos=${position}`);
