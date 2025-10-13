@@ -1,16 +1,28 @@
 import fs from "fs";
 import path from "path";
 
-export default (io, pool) => {
+/**
+ * Jetson에서 보내는 vehicle_data를 처리하고,
+ * DB 업데이트 후 특정 라즈베리파이로 값을 전달
+ */
+
+export default (io, pool, clientManager) => {
     io.on("connection", (socket) => {
         console.log("클라이언트 연결됨:", socket.id);
-
+        
+        // Jetson만 vehicle_data를 보냄
         socket.on("vehicle_data", async (data) => {
-            console.log("서버 vehicle_data 수신:", data);
+            console.log("vehicle_data 수신:", data);
 
+            // arduino_data 추출
+            const arduinoData = data.arduino_data;
+            // 없을때 예외처리 하면 좋음
+            
+            
+            // 실시간 Data 처리
             const { time, parking, moving } = data;
 
-            for (const [carId, carInfo] of Object.entries(moving)) {
+            for (const [carId, carInfo] of Object.entries(moving || {})) {
                 const { car_number, status, entry_time, position, photo } = carInfo;
 
                 try {
@@ -90,9 +102,28 @@ export default (io, pool) => {
                     console.error("DB 처리 오류:", err.message);
                 }
             }
+                
+            // arduino_data 를 해당하는 Pi에 전달
+            // 1 -> pi1번 2-> pi2번
+            for (const [piNumber, info] of Object.entries(arduinoData || {})) {
+                const { car_number, direction } = info;
+                const targetPi = `pi${piNumber}`;
 
-            // 브로드캐스트
-            io.emit("vehicle_update", data);
+                // 특정 라즈베리파이에 전달
+                clientManager.sendTo(targetPi, "update-display", {
+                    car_number,
+                    direction
+                });
+            };
+
+            console.log("===== Socket 이벤트 발생 =====");
+            console.log("수신 데이터 구조:", Object.keys(data));
+            console.log("arduino_data:", arduinoData);
+            console.log("moving:", moving);
+            console.log("=================================");
+
+            // // 브로드캐스트
+            // io.emit("vehicle_update", data);
         });
     });
 };

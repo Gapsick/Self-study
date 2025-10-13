@@ -24,6 +24,8 @@ services:
 
   backend:
     build: .
+    volumes:
+      - .:/app
     container_name: parking-backend
     # network_mode: "host"
     ports:
