@@ -17,27 +17,29 @@ export default (io, pool, clientManager) => {
             // 라즈베리파이에 값 전달
             // 1 -> pi1번,  2-> pi2번, 
             for (const [piNumber, info] of Object.entries(raspberry_data || {})) {
-                const { direction } = info;
+                const { car_number, direction } = info;
 
                 // direction 값이 없을 경우
                 if (!direction) {
                     console.warn(`pi${piNumber} direction 값이 없음`);
                     continue;
-                }
+                } else if (!car_number) {
+                    console.warn((`pi${piNumber} car_number 값이 없음`));
+                };
 
                 const targetPi = `pi${piNumber}`;
 
                 // 특정 라즈베리파이에 전달
                 clientManager.sendTo(targetPi, "update-display", {
-                    direction
+                    car_number, direction
                 });
             };
 
             // 결과 값 확인
             console.log("===== Socket 이벤트 발생 =====");
             console.log("수신 데이터 구조:", Object.keys(data));
-            console.log("arduino_data:", arduinoData);
-            console.log("moving:", moving);
+            console.log("raspberry_data keys:", Object.keys(raspberry_data));
+            console.log("raspberry_data 전체:", raspberry_data);
             console.log("=================================");
 
         });
