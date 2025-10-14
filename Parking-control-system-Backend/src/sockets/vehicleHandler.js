@@ -13,11 +13,6 @@ export default (io, pool, clientManager) => {
         // Jetson만 vehicle_data를 보냄
         socket.on("vehicle_data", async (data) => {
             console.log("vehicle_data 수신:", data);
-
-            // arduino_data 추출
-            const arduinoData = data.arduino_data;
-            // 없을때 예외처리 하면 좋음
-            
             
             // 실시간 Data 처리
             const { time, parking, moving } = data;
@@ -102,26 +97,7 @@ export default (io, pool, clientManager) => {
                     console.error("DB 처리 오류:", err.message);
                 }
             }
-                
-            // arduino_data 를 해당하는 Pi에 전달
-            // 1 -> pi1번 2-> pi2번
-            for (const [piNumber, info] of Object.entries(arduinoData || {})) {
-                const { car_number, direction } = info;
-                const targetPi = `pi${piNumber}`;
-
-                // 특정 라즈베리파이에 전달
-                clientManager.sendTo(targetPi, "update-display", {
-                    car_number,
-                    direction
-                });
-            };
-
-            console.log("===== Socket 이벤트 발생 =====");
-            console.log("수신 데이터 구조:", Object.keys(data));
-            console.log("arduino_data:", arduinoData);
-            console.log("moving:", moving);
-            console.log("=================================");
-
+    
             // // 브로드캐스트
             // io.emit("vehicle_update", data);
         });
