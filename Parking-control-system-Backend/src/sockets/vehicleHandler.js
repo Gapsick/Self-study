@@ -98,8 +98,8 @@ export default (io, pool, clientManager) => {
                 }
             }
     
-            // // 브로드캐스트
-            // io.emit("vehicle_update", data);
+            // 브로드 캐스트
+            io.emit("vehicle_update", data);
         });
     });
 };
