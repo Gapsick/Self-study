@@ -69,12 +69,12 @@ export default (io, pool, clientManager) => {
                     }
 
                     // 3. 상태 처리
-                    if (status === "parking") {
+                    if (status === "Parking") {
                         await pool.query(
                             `UPDATE parking_event SET status='parking' WHERE id=?`,
                             [eventId]
                         );
-                    } else if (status === "exit") {
+                    } else if (status === "Exit") {
                         await pool.query(
                             `UPDATE parking_event 
                             SET status='exit', exit_time=NOW() 
@@ -84,7 +84,7 @@ export default (io, pool, clientManager) => {
                     }
 
                     // 4. 좌표 로그 저장
-                    if (position) {
+                    if (position && Array.isArray(position) && position.length === 2) {
                         await pool.query(
                             `INSERT INTO parking_route (event_id, type, node_list)
                             VALUES (?, ?, ?)`,
