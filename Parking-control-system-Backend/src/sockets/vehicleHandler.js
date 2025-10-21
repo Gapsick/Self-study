@@ -129,8 +129,8 @@ export default (io, pool, clientManager) => {
 
 // 방향 변환 함수
 function convertDirection(piNumber, agxDir) {
-  const mapGroup1 = { left: "down", right: "up", up: "left", down: "right" };  // 1~3번용
-  const mapGroup2 = { left: "up", right: "down", up: "right", down: "left" };  // 4~6번용
+  const mapGroup1 = { left: "up", right: "down", up: "right", down: "left" };  // 1~3번용
+  const mapGroup2 = { left: "down", right: "up", up: "left", down: "right" };  // 4~6번용
 
     if (piNumber >= 1 && piNumber <= 3) return mapGroup1[agxDir] || agxDir;
     if (piNumber >= 4 && piNumber <= 6) return mapGroup2[agxDir] || agxDir;
