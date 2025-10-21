@@ -7,6 +7,7 @@ const connectedClients = {};
 export default (io) => {
     io.on("connection", (socket) => {
         console.log(`새 연결: ${socket.id}`);
+        console.log(`IP 주소: ${socket.handshake.address}`);
 
         // 장치가 연결될 때 자신을 등록
         socket.on("register", (data) => {

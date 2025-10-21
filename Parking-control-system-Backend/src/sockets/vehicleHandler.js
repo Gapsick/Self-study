@@ -14,10 +14,35 @@ export default (io, pool, clientManager) => {
         socket.on("vehicle_data", async (data) => {
             console.log("vehicle_data 수신됨");
 
-            const { time, cars, parking_spaces, moving_spaces } = data;
+            const { time, cars, parking_spaces, moving_spaces, web_positions, display } = data;
 
             // Jetson → 프론트 (라즈베리파이/웹)로 전체 브로드캐스트
             io.emit("update-display", data);
+
+            // 라즈베리파이에 값 전달
+            // 1 -> pi1번,  2-> pi2번, 
+            for (const [piNumber, info] of Object.entries(display || {})) {
+                if (!Array.isArray(info) || !info.length) continue;
+
+                const [ car_number, direction ] = info[0];
+                if (!car_number || !direction) continue;
+
+                // direction 값이 없을 경우
+                if (!direction) {
+                    console.warn(`pi${piNumber} direction 값이 없음`);
+                    continue;
+                } else if (!car_number) {
+                    console.warn((`pi${piNumber} car_number 값이 없음`));
+                };
+
+                const targetPi = `pi${piNumber}`;
+
+                // 특정 라즈베리파이에 전달
+                clientManager.sendTo(targetPi, "update-display", {
+                    car_number, direction
+                });
+                console.log(`서버 → ${targetPi} 데이터 전송됨:`, { car_number, direction });
+            };
 
             // 차량 데이터(cars)만 DB에 반영
             for (const [carId, carInfo] of Object.entries(cars || {})) {
@@ -66,7 +91,7 @@ export default (io, pool, clientManager) => {
                             VALUES (?, ?, ?)`,
                             [eventId, status, JSON.stringify(position)]
                         );
-                        console.log(`[경로 저장] ${car_number}: ${position}`);
+                        // console.log(`[경로 저장] ${car_number}: ${position}`);
                     }
 
                     // 4) 출차 시 세션 종료
