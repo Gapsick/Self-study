@@ -27,21 +27,15 @@ export default (io, pool, clientManager) => {
                 const [ car_number, direction ] = info[0];
                 if (!car_number || !direction) continue;
 
-                // direction 값이 없을 경우
-                if (!direction) {
-                    console.warn(`pi${piNumber} direction 값이 없음`);
-                    continue;
-                } else if (!car_number) {
-                    console.warn((`pi${piNumber} car_number 값이 없음`));
-                };
 
+                const convertedDir = convertDirection(piNumber, direction.toLowerCase());
                 const targetPi = `pi${piNumber}`;
 
                 // 특정 라즈베리파이에 전달
                 clientManager.sendTo(targetPi, "update-display", {
-                    car_number, direction
+                    car_number, direction: convertedDir
                 });
-                console.log(`서버 → ${targetPi} 데이터 전송됨:`, { car_number, direction });
+                console.log(`서버 → ${targetPi} 데이터 전송됨:`, { car_number, converted: convertedDir });
             };
 
             // 차량 데이터(cars)만 DB에 반영
@@ -132,3 +126,15 @@ export default (io, pool, clientManager) => {
         });
     });
 };
+
+// 방향 변환 함수
+function convertDirection(piNumber, agxDir) {
+  const mapGroup1 = { left: "down", right: "up", up: "left", down: "right" };  // 1~3번용
+  const mapGroup2 = { left: "up", right: "down", up: "right", down: "left" };  // 4~6번용
+
+    if (piNumber >= 1 && piNumber <= 3) return mapGroup1[agxDir] || agxDir;
+    if (piNumber >= 4 && piNumber <= 6) return mapGroup2[agxDir] || agxDir;
+
+  return agxDir; // 기본 (예외)
+}
+
