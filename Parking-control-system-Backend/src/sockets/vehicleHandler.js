@@ -12,117 +12,161 @@ export default (io, pool, clientManager) => {
         console.log("Jetson 연결됨:", socket.id);
 
         socket.on("vehicle_data", async (data) => {
-            console.log("vehicle_data 수신됨");
+        console.log("vehicle_data 수신됨");
 
-            const { time, cars, parking_spaces, moving_spaces, web_positions, display } = data;
+        // 값 받아오기
+        const { time, cars, parking_spaces, moving_spaces, web_positions, display = {}, exit = {} } = data;
 
-            // Jetson → 프론트 (라즈베리파이/웹)로 전체 브로드캐스트
-            io.emit("update-display", data);
+        // 그대로 프론트 전체 Data 전달
+        io.emit("update-display", data);
 
-            // 라즈베리파이에 값 전달
-            // 1 -> pi1번,  2-> pi2번, 
-            for (const [piNumber, info] of Object.entries(display || {})) {
-                if (!Array.isArray(info) || !info.length) continue;
+        // 라즈베리파이 화면에 표시
+        for (const [piNumber, info] of Object.entries(display || {})) {
+            if (!Array.isArray(info) || !info.length) continue;
+            const [car_number, direction] = info[0];
+            if (!car_number || !direction) continue;
 
-                const [ car_number, direction ] = info[0];
-                if (!car_number || !direction) continue;
+            const convertedDir = convertDirection(piNumber, direction.toLowerCase());
+            const targetPi = `pi${piNumber}`;
+            clientManager.sendTo(targetPi, "update-display", {
+            car_number,
+            direction: convertedDir,
+            });
+            console.log(`서버 → ${targetPi} 데이터 전송됨:`, {
+            car_number,
+            converted: convertedDir,
+            });
+        }
 
+        // 차량 데이터(cars) DB 반영
+        for (const [carId, carInfo] of Object.entries(cars || {})) {
+            const { car_number, status, entry_time, position } = carInfo;
+            if (!car_number || !status) continue;
 
-                const convertedDir = convertDirection(piNumber, direction.toLowerCase());
-                const targetPi = `pi${piNumber}`;
+            try {
+            // 기존 세션 조회
+            const [rows] = await pool.query(
+                `SELECT id, status FROM parking_event
+                WHERE plate_number=? AND exit_time IS NULL
+                ORDER BY id DESC LIMIT 1`,
+                [car_number]
+            );
 
-                // 특정 라즈베리파이에 전달
-                clientManager.sendTo(targetPi, "update-display", {
-                    car_number, direction: convertedDir
-                });
-                console.log(`서버 → ${targetPi} 데이터 전송됨:`, { car_number, converted: convertedDir });
-            };
+            let eventId;
 
-            // 차량 데이터(cars)만 DB에 반영
-            for (const [carId, carInfo] of Object.entries(cars || {})) {
-                const { car_number, status, entry_time, position, photo } = carInfo;
+            // 입차
+            if (!rows.length) {
+                const [result] = await pool.query(
+                `INSERT INTO parking_event (plate_number, entry_time, status)
+                VALUES (?, FROM_UNIXTIME(?), ?)`,
+                [car_number, entry_time, status]
+                );
+                eventId = result.insertId;
+                console.log(`[입차] 새로운 세션 생성: ${car_number}`);
+            } else {
+                // 없으면 기존 세션 사용
+                eventId = rows[0].id;
 
-                if (!car_number || !status) continue;
-
-                try {
-                    // 🔹 기존 세션(아직 출차 안한 차량) 조회
-                    const [rows] = await pool.query(
-                        `SELECT id, status FROM parking_event
-                        WHERE plate_number=? AND exit_time IS NULL
-                        ORDER BY id DESC LIMIT 1`,
-                        [car_number]
-                    );
-
-                    let eventId;
-
-                    // 1) 세션 없으면 새로 생성 (입차)
-                    if (!rows.length) {
-                        const [result] = await pool.query(
-                            `INSERT INTO parking_event (plate_number, entry_time, status)
-                            VALUES (?, FROM_UNIXTIME(?), ?)`,
-                            [car_number, entry_time, status]
-                        );
-                        eventId = result.insertId;
-                        console.log(`[입차] 새로운 세션 생성: ${car_number}`);
-                    } else {
-                        // 2) 세션 있으면 기존 ID 사용
-                        eventId = rows[0].id;
-
-                        // 상태 변경 감지 → 업데이트
-                        if (rows[0].status !== status) {
-                            await pool.query(
-                                `UPDATE parking_event SET status=? WHERE id=?`,
-                                [status, eventId]
-                            );
-                            console.log(`[상태 변경] ${car_number}: ${rows[0].status} → ${status}`);
-                        }
-                    }
-
-                    // 3) 좌표 로그 저장 (매 tick)
-                    if (position && Array.isArray(position)) {
-                        await pool.query(
-                            `INSERT INTO parking_route (event_id, type, node_list)
-                            VALUES (?, ?, ?)`,
-                            [eventId, status, JSON.stringify(position)]
-                        );
-                        // console.log(`[경로 저장] ${car_number}: ${position}`);
-                    }
-
-                    // 4) 출차 시 세션 종료
-                    if (status.toLowerCase() === "exit") {
-                        await pool.query(
-                            `UPDATE parking_event 
-                            SET exit_time=NOW(), status='exit'
-                            WHERE id=?`,
-                            [eventId]
-                        );
-                        console.log(`[출차 완료] ${car_number}`);
-                    }
-
-                    // 사진 저장
-                    if (photo && status.toLowerCase() === "entry") {
-                        try {
-                            const fileName = `${Date.now()}_${car_number}.jpg`;
-                            const uploadDir = path.join(process.cwd(), "uploads/cars");
-                            if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
-
-                            const filePath = path.join(uploadDir, fileName);
-                            const base64Data = photo.replace(/^data:image\/\w+;base64,/, "");
-                            fs.writeFileSync(filePath, Buffer.from(base64Data, "base64"));
-
-                            await pool.query(
-                                `UPDATE parking_event SET entry_photo_url=? WHERE id=?`,
-                                [`/uploads/cars/${fileName}`, eventId]
-                            );
-                            console.log(`[사진 저장 완료] ${fileName}`);
-                        } catch (errPhoto) {
-                            console.error("사진 처리 오류:", errPhoto.message);
-                        }
-                    }
-                } catch (err) {
-                    console.error("DB 처리 오류:", err.message);
+                // 상태 변경 감지
+                if (rows[0].status !== status) {
+                await pool.query(`UPDATE parking_event SET status=? WHERE id=?`, [status, eventId]);
+                console.log(`[상태 변경] ${car_number}: ${rows[0].status} → ${status}`);
                 }
             }
+
+            // 이동 좌표 저장
+            if (position && Array.isArray(position)) {
+                await pool.query(
+                `INSERT INTO parking_route (event_id, type, node_list)
+                VALUES (?, ?, ?)`,
+                [eventId, status, JSON.stringify(position)]
+                );
+            }
+            } catch (err) {
+            console.error("DB 처리 오류:", err.message);
+            }
+        }
+
+        // 출차 데이터 처리 -> 만약에 처리를 한번에 2번 해야될 경우가 있을수 있음 (없으면 그냥 if문)
+        for (const [_, info] of Object.entries(exit)) {
+            const car_number = info.car_number;
+            if (!car_number) continue;
+
+            try {
+            const [rows] = await pool.query(
+                `SELECT id FROM parking_event
+                WHERE plate_number=? AND exit_time IS NULL
+                ORDER BY id DESC LIMIT 1`,
+                [car_number]
+            );
+
+            if (!rows.length) {
+                console.log(`출차 대상 없음 ${car_number}`);
+                continue;
+            }
+
+            const eventId = rows[0].id;
+
+            // 출차 시간 저장
+            await pool.query(
+                `UPDATE parking_event SET exit_time=NOW(), status='exit' WHERE id=?`,
+                [eventId]
+            );
+
+            // entry_time, exit_time 가져오기
+            const [result] = await pool.query(
+                `SELECT entry_time, exit_time FROM parking_event WHERE id=?`,
+                [eventId]
+            );
+
+            const { entry_time, exit_time } = result[0];
+
+            console.log(`[출차 완료] ${car_number}`);
+
+            // 라즈베리파이 7번 open 신호 전송
+            clientManager.sendTo("pi7", "gate_open", true);
+            console.log(`pi7번 에게 open data 보냄`)
+
+
+            // 요금 계산
+            const { durationSeconds, durationString, fee } = calculateParkingFee(entry_time, exit_time);
+
+            // DB에 요금/시간 저장
+            await pool.query(
+                `UPDATE parking_event SET duration_seconds=?, fee=? WHERE id=?`,
+                [durationSeconds, fee, eventId]
+            );
+
+            // 상세 데이터 조회
+            const [detail] = await pool.query(
+                `SELECT 
+                    plate_number AS car_number,
+                    entry_time,
+                    exit_time,
+                    entry_photo_url
+                FROM parking_event
+                WHERE id=?`,
+                [eventId]
+            );
+
+            const d = detail[0];
+
+            // 프론트로 전송
+            const responseData = {
+                car_number: d.car_number,
+                entry_time: d.entry_time,
+                exit_time: d.exit_time,
+                duration: durationString,
+                fee,
+                entry_photo_url: d.entry_photo_url,
+            };
+
+            clientManager.sendTo("exitFront", "exit_summary", responseData);
+            console.log(`exitFront에게 Data 전송 완료`, responseData);
+            } catch (err) {
+            console.error("출차 처리 에러:", err.message);
+            }
+        }
         });
     });
 };
@@ -138,3 +182,26 @@ function convertDirection(piNumber, agxDir) {
   return agxDir; // 기본 (예외)
 }
 
+// 총 주차시간, 금액 계산 함수
+function calculateParkingFee (entryTime, exitTime) {
+    const entry = new Date(entryTime);
+    const exit = new Date(exitTime);
+
+    // 총 주차시간(초 단위)
+    const diffSeconds = Math.floor((exit - entry) / 1000);
+    const diffMinutes = Math.floor(diffSeconds / 60);
+
+    // 시간, 분 전환
+    const hours = Math.floor(diffSeconds / 3600);
+    const minutes = Math.floor((diffSeconds % 3600) / 60);
+    const seconds = diffSeconds % 60;
+
+    // 요금 계산 규칙 (1초당 1원씩 = 분당 60원)
+    const fee = Math.round(diffSeconds * 1);
+
+    return {
+        durationSeconds: diffSeconds,
+        durationString: `${hours ? hours + "시간 " : ""}${minutes ? minutes + "분 " : ""}${seconds}초`,
+        fee,
+    }
+}
