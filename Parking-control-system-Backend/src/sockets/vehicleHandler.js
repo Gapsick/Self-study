@@ -90,6 +90,8 @@ export default (io, pool, clientManager) => {
         // 출차 데이터 처리 -> 만약에 처리를 한번에 2번 해야될 경우가 있을수 있음 (없으면 그냥 if문)
         for (const [_, info] of Object.entries(exit)) {
             const car_number = info.car_number;
+            console.log(car_number)
+
             if (!car_number) continue;
 
             try {
@@ -133,7 +135,7 @@ export default (io, pool, clientManager) => {
 
             // DB에 요금/시간 저장
             await pool.query(
-                `UPDATE parking_event SET duration_seconds=?, fee=? WHERE id=?`,
+                `UPDATE parking_event SET duration=?, fee=? WHERE id=?`,
                 [durationSeconds, fee, eventId]
             );
 
