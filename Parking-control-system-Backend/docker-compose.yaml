@@ -15,7 +15,8 @@ services:
       - "3306:3306"
     volumes:
       - db_data:/var/lib/mysql
-      - ./src/db/createTable.sql:/docker-entrypoint-initdb.d/createTable.sql
+      - ./src/db/01_createTable.sql:/docker-entrypoint-initdb.d/01_createTable.sql
+      - ./src/db/02_mock_parking.sql:/docker-entrypoint-initdb.d/02_mock_parking.sql
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uuser", "-ppass"]
       interval: 10s

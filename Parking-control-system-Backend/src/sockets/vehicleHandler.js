@@ -40,8 +40,18 @@ export default (io, pool, clientManager) => {
 
         // 차량 데이터(cars) DB 반영
         for (const [carId, carInfo] of Object.entries(cars || {})) {
-            const { car_number, status, entry_time, position } = carInfo;
+            const { car_number, status, entry_time, position, space_id } = carInfo;
             if (!car_number || !status) continue;
+
+            const spaceMap = {
+                0: "A1", 1: "A2", 2: "A3", 3: "A4", 4: "A5", 5: "A6",
+                6: "B1", 7: "B2", 8: "B3", 9: "B4",
+                10: "C1", 11: "C2", 12: "C3", 13: "C4", 14: "C5",
+                15: "D1", 16: "D2", 17: "D3", 18: "D4",
+                19: "E1", 20: "E2", 21: "E3"
+            };
+
+            const slot_name = spaceMap[space_id] || null;
 
             try {
             // 기존 세션 조회
@@ -57,9 +67,9 @@ export default (io, pool, clientManager) => {
             // 입차
             if (!rows.length) {
                 const [result] = await pool.query(
-                `INSERT INTO parking_event (plate_number, entry_time, status)
-                VALUES (?, FROM_UNIXTIME(?), ?)`,
-                [car_number, entry_time, status]
+                `INSERT INTO parking_event (plate_number, entry_time, status, slot_name)
+                VALUES (?, FROM_UNIXTIME(?), ?, ?)`,
+                [car_number, entry_time, status, slot_name]
                 );
                 eventId = result.insertId;
                 console.log(`[입차] 새로운 세션 생성: ${car_number}`);

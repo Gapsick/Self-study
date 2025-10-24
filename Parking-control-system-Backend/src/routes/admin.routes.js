@@ -7,7 +7,7 @@ const router = express.Router();
 router.get("/", async (req, res) => {
     const { plate, start_date, end_date } = req.query;
     let sql =
-        "SELECT id, plate_number, entry_time, exit_time, fee, status FROM parking_event WHERE 1=1";
+        "SELECT id, plate_number, slot_name, entry_time, exit_time, status FROM parking_event WHERE 1=1";
     let params = [];
 
     if (plate) {
@@ -31,14 +31,61 @@ router.get("/", async (req, res) => {
 // 상세 조회 (route 포함)
 router.get("/:id", async (req, res) => {
     try {
-        const [results] = await pool.query(
-        "SELECT * FROM parking_event WHERE id = ?",
-        [req.params.id]
+        const eventId = req.params.id;
+
+        // 기본 정보
+        const [eventRows] = await pool.query(
+        `
+        SELECT id, plate_number, slot_name, entry_time, exit_time, duration,fee, status, entry_photo_url
+        FROM parking_event
+        WHERE id = ?
+        `,
+        [eventId]
         );
-        res.json(results[0]);
+
+        if (!eventRows.length) {
+        return res.status(404).json({ error: "Data not found" });
+        }
+        const event = eventRows[0];
+
+        // 경로 데이터 (node_list)
+        const [routeRows] = await pool.query(
+        `
+        SELECT node_list
+        FROM parking_route
+        WHERE event_id = ?
+        ORDER BY created_at ASC
+        `,
+        [eventId]
+        );
+
+        const routes = routeRows
+        .map(r => {
+            const data = r.node_list;
+            if (typeof data === "string") {
+            try {
+                return JSON.parse(data);
+            } catch (e) {
+                console.error("⚠️ node_list JSON 파싱 실패:", data);
+                return [];
+            }
+            } else {
+            return data;
+            }
+        })
+        .flat();
+
+        // 응답
+        res.json({
+        ...event,
+        routes
+        });
+
     } catch (err) {
+        console.error("상세 조회 에러:", err.message);
         res.status(500).json({ error: "DB error" });
     }
 });
+
 
 export default router;
