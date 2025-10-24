@@ -7,10 +7,10 @@
 
 /**
  * @swagger
- * /admin/events:
+ * /admin:
  *   get:
  *     summary: 주차 이벤트 목록 조회
- *     description: 차량번호/날짜 범위로 검색 가능한 이벤트 리스트
+ *     description: 차량번호 및 날짜 범위로 검색 가능한 이벤트 리스트
  *     tags: [Admin]
  *     parameters:
  *       - in: query
@@ -42,13 +42,16 @@
  *               type: array
  *               items:
  *                 $ref: '#/components/schemas/EventSummary'
+ *       500:
+ *         description: DB error
  */
 
 /**
  * @swagger
- * /admin/events/{id}:
+ * /admin/{id}:
  *   get:
  *     summary: 특정 주차 이벤트 상세 조회
+ *     description: 선택한 이벤트의 기본 정보 및 이동 경로를 조회합니다.
  *     tags: [Admin]
  *     parameters:
  *       - in: path
@@ -64,6 +67,10 @@
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/EventDetail'
+ *       404:
+ *         description: Data not found
+ *       500:
+ *         description: DB error
  */
 
 /**
@@ -73,24 +80,51 @@
  *     EventSummary:
  *       type: object
  *       properties:
- *         id: { type: integer, example: 1 }
- *         plate_number: { type: string, example: "1234" }
- *         entry_time: { type: string, format: date-time, example: "2025-09-01T10:30:00" }
- *         exit_time: { type: string, format: date-time, nullable: true, example: "2025-09-01T15:00:00" }
- *         fee: { type: integer, example: 4000 }
+ *         id:
+ *           type: integer
+ *           example: 1
+ *         plate_number:
+ *           type: string
+ *           example: "1234"
+ *         slot_name:
+ *           type: string
+ *           example: "B2"
+ *         entry_time:
+ *           type: string
+ *           format: date-time
+ *           example: "2025-10-23T09:10:00.000Z"
+ *         exit_time:
+ *           type: string
+ *           format: date-time
+ *           nullable: true
+ *           example: null
  *         status:
  *           type: string
- *           enum: [parking, completed]
- *           example: parking
+ *           enum: [entry, parking, exit]
+ *           example: entry
+ *         fee:
+ *           type: integer
+ *           nullable: true
+ *           example: 1200
  *
  *     EventDetail:
  *       allOf:
  *         - $ref: '#/components/schemas/EventSummary'
  *         - type: object
  *           properties:
- *             duration: { type: string, example: "4h 30m" }
- *             route:
+ *             duration:
+ *               type: integer
+ *               description: 총 주차 시간(초 단위)
+ *               example: 4200
+ *             entry_photo_url:
+ *               type: string
+ *               example: "/uploads/cars/1234.jpg"
+ *             routes:
  *               type: array
- *               items: { type: integer }
- *               example: [1, 2, 5, 7]
+ *               description: 차량 이동 경로 좌표 리스트
+ *               items:
+ *                 type: array
+ *                 items:
+ *                   type: number
+ *               example: [[100, 200], [120, 220], [140, 240]]
  */
