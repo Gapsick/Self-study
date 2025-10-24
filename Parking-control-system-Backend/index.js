@@ -1,5 +1,6 @@
 import express from "express";
 import httpPkg from "http";
+import cors from "cors";
 
 import pool from "./src/db/connection.js";
 import testDBConnection from "./src/server/dbTest.js";
@@ -10,6 +11,14 @@ import routes from "./src/routes/index.js";
 
 const app = express();
 const http = httpPkg.createServer(app);
+
+app.use(
+  cors({
+    origin: "*",
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
 
 app.use(express.json());
 
