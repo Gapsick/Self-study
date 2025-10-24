@@ -153,6 +153,7 @@ export default (io, pool, clientManager) => {
             const [detail] = await pool.query(
                 `SELECT 
                     plate_number AS car_number,
+                    slot_name,
                     entry_time,
                     exit_time,
                     entry_photo_url
@@ -170,6 +171,7 @@ export default (io, pool, clientManager) => {
                 exit_time: d.exit_time,
                 duration: durationString,
                 fee,
+                slot_name: d.slot_name,
                 entry_photo_url: d.entry_photo_url,
             };
 
