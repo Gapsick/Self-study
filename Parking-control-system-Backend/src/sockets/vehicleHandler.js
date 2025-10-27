@@ -83,6 +83,13 @@ export default (io, pool, clientManager) => {
             } else {
                 // 없으면 기존 세션 사용
                 eventId = rows[0].id;
+                if (slot_name) {
+                    await pool.query(
+                    `UPDATE parking_event SET slot_name=? WHERE id=?`,
+                    [slot_name, eventId]
+                    );
+                    console.log(`[slot 갱신] ${car_number}: ${slot_name}`);
+                }
 
                 // 상태 변경 감지
                 if (rows[0].status !== status) {

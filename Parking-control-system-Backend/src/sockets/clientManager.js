@@ -32,14 +32,25 @@ export default (io) => {
                 const filePath = path.join(uploadDir, fileName);
 
                 fs.writeFileSync(filePath, Buffer.from(image.replace(/^data:image\/\w+;base64,/, ""), "base64"));
-
-                await pool.query(
+                
+                // ⏳ 최대 5회 재시도
+                let updated = 0;
+                for (let i = 0; i < 5; i++) {
+                const [result] = await pool.query(
                     `UPDATE parking_event 
                     SET entry_photo_url=? 
-                    WHERE plate_number=? AND exit_time IS NULL
+                    WHERE plate_number=? AND exit_time IS NULL 
                     ORDER BY id DESC LIMIT 1`,
                     [`/uploads/cars/${fileName}`, car_number]
                 );
+                if (result.affectedRows > 0) {
+                    updated = 1;
+                    console.log(`[입구 사진 저장 완료] ${car_number}`);
+                    break;
+                }
+                console.log(`⚠️ 아직 세션 없음, 0.5초 후 재시도 (${i + 1}/5)`);
+                await new Promise((r) => setTimeout(r, 500));
+                }
 
                 console.log(`[입구 사진 저장 완료] ${car_number}`);
 
