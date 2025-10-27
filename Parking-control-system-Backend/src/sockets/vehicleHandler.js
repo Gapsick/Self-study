@@ -54,7 +54,7 @@ export default (io, pool, clientManager) => {
                 14: "D1", 15: "D2", 16: "D3", 17: "D4", 18: "D5", 19: "D6", 20: "D7", 21: "D8", 22: "D9"
             };
 
-            const slot_name = spaceMap[space_id] || null;
+            const slot_name = spaceMap[Number(space_id)] || null;
 
             console.log("----------------------")
             console.log("slot_name:", slot_name)
@@ -75,20 +75,27 @@ export default (io, pool, clientManager) => {
             if (!rows.length) {
                 const [result] = await pool.query(
                 `INSERT INTO parking_event (plate_number, entry_time, status, slot_name)
-                VALUES (?, FROM_UNIXTIME(?), ?, ?)`,
-                [car_number, entry_time, status, slot_name]
+                VALUES (?, FROM_UNIXTIME(?), ?, NULL)`,
+                [car_number, entry_time, status]
                 );
                 eventId = result.insertId;
                 console.log(`[입차] 새로운 세션 생성: ${car_number}`);
             } else {
                 // 없으면 기존 세션 사용
                 eventId = rows[0].id;
-                if (slot_name) {
+
+                if (status === "parking" && slot_name) {
                     await pool.query(
                     `UPDATE parking_event SET slot_name=? WHERE id=?`,
                     [slot_name, eventId]
                     );
-                    console.log(`[slot 갱신] ${car_number}: ${slot_name}`);
+                    console.log(`[slot 확정] ${car_number}: ${slot_name}`);
+                }
+
+                if (status === "exit") {
+                    // 원하면 slot_name을 null로 초기화 (자리 비우기용)
+                    // await pool.query(`UPDATE parking_event SET slot_name=NULL WHERE id=?`, [eventId]);
+                    console.log(`[출차] ${car_number} slot 해제`);
                 }
 
                 // 상태 변경 감지

@@ -33,34 +33,39 @@ export default (io) => {
 
                 fs.writeFileSync(filePath, Buffer.from(image.replace(/^data:image\/\w+;base64,/, ""), "base64"));
                 
-                // ⏳ 최대 5회 재시도
-                let updated = 0;
-                for (let i = 0; i < 5; i++) {
+                const maxAttempts = 5; // 최대 5번 시도 (5초)
+                let success = false;
+
+                for (let attempt = 1; attempt <= maxAttempts; attempt++) {
                 const [result] = await pool.query(
                     `UPDATE parking_event 
                     SET entry_photo_url=? 
-                    WHERE plate_number=? AND exit_time IS NULL 
+                    WHERE plate_number=? AND exit_time IS NULL
                     ORDER BY id DESC LIMIT 1`,
                     [`/uploads/cars/${fileName}`, car_number]
                 );
+
                 if (result.affectedRows > 0) {
-                    updated = 1;
-                    console.log(`[입구 사진 저장 완료] ${car_number}`);
+                    console.log(`✅ [입구 사진 DB 반영 완료] ${car_number} (시도 ${attempt}회)`);
+
+                    // 프론트 알림 추가
+                    io.emit("entry_data", { car_number, image });
+
+                    success = true;
                     break;
+                } else {
+                    console.log(`⏳ ${car_number} 차량 DB 미존재 — ${attempt}회차 재시도 대기 중...`);
+                    await new Promise((resolve) => setTimeout(resolve, 1000)); // 1초 대기
                 }
-                console.log(`⚠️ 아직 세션 없음, 0.5초 후 재시도 (${i + 1}/5)`);
-                await new Promise((r) => setTimeout(r, 500));
                 }
 
-                console.log(`[입구 사진 저장 완료] ${car_number}`);
-
-                // 입차 프론트에 값 넘기기
-                io.emit("entry_data", { car_number, image })
-
+                if (!success) {
+                console.warn(`⚠️ [사진 반영 실패] ${car_number} 차량의 parking_event 미생성`);
+                }
             } catch (err) {
                 console.error("사진 저장 오류:", err.message);
             }
-        })
+        });
 
         // 연결 해제 시 목록에서 제거
         socket.on("disconnect", () => {
