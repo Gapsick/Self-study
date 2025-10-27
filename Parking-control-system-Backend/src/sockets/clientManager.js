@@ -1,3 +1,7 @@
+import fs from "fs";
+import path from "path";
+import pool from "../db/connection.js";
+
 // 연결된 클라이언트를 저장할 객체
 // 예: { pi1: "socketId_1", pi2: "socketId_2", jetson: "socketId_3" }
 const connectedClients = {};
@@ -38,6 +42,10 @@ export default (io) => {
                 );
 
                 console.log(`[입구 사진 저장 완료] ${car_number}`);
+
+                // 입차 프론트에 값 넘기기
+                io.emit("entry_data", { car_number, image })
+
             } catch (err) {
                 console.error("사진 저장 오류:", err.message);
             }
