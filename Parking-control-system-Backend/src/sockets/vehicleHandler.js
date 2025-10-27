@@ -196,7 +196,8 @@ export default (io, pool, clientManager) => {
                 entry_photo_url: d.entry_photo_url,
             };
 
-            clientManager.sendTo("exitFront", "exit_summary", responseData);
+            io.emit("exit_summary", responseData);
+
             console.log(`exitFront에게 Data 전송 완료`, responseData);
             } catch (err) {
             console.error("출차 처리 에러:", err.message);
