@@ -20,6 +20,8 @@ router.get("/", async (req, res) => {
         params.push(start_date + " 00:00:00", end_date + " 23:59:59");
     }
 
+    sql += " ORDER BY entry_time DESC";
+
     try {
         const [results] = await pool.query(sql, params);
         res.json(results);
