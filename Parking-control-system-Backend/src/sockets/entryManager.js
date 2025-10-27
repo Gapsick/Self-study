@@ -40,7 +40,7 @@ export default (io) => {
                 console.log(`[입구 사진 저장 완료] ${car_number}`);
 
                 // 입구 프론트에게 전달
-                io.emit("entry_data", {car_number, image });
+                io.emit("entry_data", { car_number, image });
 
             } catch (err) {
                 console.error("사진 저장 오류:", err.message);

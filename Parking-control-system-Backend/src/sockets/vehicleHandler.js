@@ -42,16 +42,17 @@ export default (io, pool, clientManager) => {
         for (const [carId, carInfo] of Object.entries(cars || {})) {
             const { car_number, status, entry_time, position, space_id } = carInfo;
             if (!car_number || !status) continue;
+            console.log("carInfo:", carInfo)
 
             const spaceMap = {
                 0: "A1", 1: "A2", 2: "A3", 3: "A4", 4: "A5", 5: "A6",
                 6: "B1", 7: "B2", 8: "B3", 9: "B4",
-                10: "C1", 11: "C2", 12: "C3", 13: "C4", 14: "C5",
-                15: "D1", 16: "D2", 17: "D3", 18: "D4",
-                19: "E1", 20: "E2", 21: "E3"
+                10: "C1", 11: "C2", 12: "C3", 13: "C4",
+                14: "D1", 15: "D2", 16: "D3", 17: "D4", 18: "D5", 19: "D6", 20: "D7", 21: "D8", 22: "D9"
             };
 
             const slot_name = spaceMap[space_id] || null;
+            console.log("slot_name:", slot_name)
 
             try {
             // 기존 세션 조회

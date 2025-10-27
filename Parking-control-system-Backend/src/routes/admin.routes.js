@@ -59,21 +59,23 @@ router.get("/:id", async (req, res) => {
         [eventId]
         );
 
-        const routes = routeRows
-        .map(r => {
-            const data = r.node_list;
-            if (typeof data === "string") {
-            try {
-                return JSON.parse(data);
-            } catch (e) {
-                console.error("⚠️ node_list JSON 파싱 실패:", data);
-                return [];
-            }
+        const routes = routeRows.reduce((acc, r) => {
+        try {
+            const parsed = typeof r.node_list === "string"
+            ? JSON.parse(r.node_list)
+            : r.node_list;
+
+            if (Array.isArray(parsed)) {
+            // 각 route 안의 좌표쌍들을 전체 배열에 추가
+            acc.push(...parsed);
             } else {
-            return data;
+            console.warn("⚠️ 예상치 못한 형식:", r.node_list);
             }
-        })
-        .flat();
+        } catch (e) {
+            console.error("⚠️ node_list JSON 파싱 실패:", r.node_list);
+        }
+        return acc;
+        }, []);
 
         // 응답
         res.json({
