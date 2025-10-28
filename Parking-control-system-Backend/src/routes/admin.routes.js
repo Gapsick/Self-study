@@ -38,7 +38,7 @@ router.get("/:id", async (req, res) => {
         // 기본 정보
         const [eventRows] = await pool.query(
         `
-        SELECT id, plate_number, slot_name, entry_time, exit_time, duration,fee, status, entry_photo_url
+        SELECT id, plate_number, slot_name, entry_time, exit_time, duration, fee, status, entry_photo_url
         FROM parking_event
         WHERE id = ?
         `,
@@ -48,6 +48,7 @@ router.get("/:id", async (req, res) => {
         if (!eventRows.length) {
         return res.status(404).json({ error: "Data not found" });
         }
+
         const event = eventRows[0];
 
         // 경로 데이터 (node_list)
@@ -61,15 +62,16 @@ router.get("/:id", async (req, res) => {
         [eventId]
         );
 
+        // 🟢 핵심 부분 (node_list 파싱)
         const routes = routeRows.reduce((acc, r) => {
         try {
-            const parsed = typeof r.node_list === "string"
-            ? JSON.parse(r.node_list)
-            : r.node_list;
+            const parsed =
+            typeof r.node_list === "string"
+                ? JSON.parse(r.node_list)
+                : r.node_list;
 
             if (Array.isArray(parsed)) {
-            // 각 route 안의 좌표쌍들을 전체 배열에 추가
-            acc.push(...parsed);
+            acc.push(...parsed); // [[1,2],[2,3]] → [ [1,2], [2,3] ]
             } else {
             console.warn("⚠️ 예상치 못한 형식:", r.node_list);
             }
@@ -82,9 +84,8 @@ router.get("/:id", async (req, res) => {
         // 응답
         res.json({
         ...event,
-        routes
+        routes,
         });
-
     } catch (err) {
         console.error("상세 조회 에러:", err.message);
         res.status(500).json({ error: "DB error" });
